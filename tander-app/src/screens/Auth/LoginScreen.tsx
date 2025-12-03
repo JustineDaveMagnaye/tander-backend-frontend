@@ -95,20 +95,32 @@ export default function LoginScreen() {
                 } catch (error: any) {
                   console.error("Login error:", error);
 
-                  // Check if error is due to incomplete profile
+                  // ✅ Redirect to Step 1 if profile is incomplete
                   if (error.profileIncomplete) {
-                    toast.showToast({
-                      type: 'warning',
-                      message: "Your profile is incomplete. Please complete your registration to continue.",
-                      duration: 6000,
-                      action: {
-                        label: 'Complete Profile',
-                        onPress: () => NavigationService.navigate("Auth", { screen: "Register" }),
-                      },
-                    });
-                  } else if (error.code === 'INVALID_CREDENTIALS') {
+                    toast.warning("Profile incomplete. Redirecting to complete your profile...");
+                    setTimeout(() => {
+                      NavigationService.navigate("Registration", {
+                        screen: "Step1BasicInfo",
+                        params: { username: error.username },
+                      });
+                    }, 1500);
+                  }
+                  // ✅ Redirect to Step 2 if ID verification is incomplete
+                  else if (error.idVerificationIncomplete) {
+                    toast.warning("ID verification required. Redirecting to verify your identity...");
+                    setTimeout(() => {
+                      NavigationService.navigate("Registration", {
+                        screen: "Step2IdVerification",
+                        params: { username: error.username },
+                      });
+                    }, 1500);
+                  }
+                  // ❌ Invalid credentials
+                  else if (error.code === 'INVALID_CREDENTIALS') {
                     toast.error("Incorrect username or password. Please try again.");
-                  } else {
+                  }
+                  // ❌ Other errors
+                  else {
                     toast.error(error.message || "An error occurred. Please try again.");
                   }
                 } finally {
