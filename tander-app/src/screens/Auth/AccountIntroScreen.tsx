@@ -25,9 +25,14 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 
 const accountIntroSchema = Yup.object().shape({
+  username: Yup.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be at most 20 characters")
+    .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
+    .required("Username is required"),
   email: Yup.string()
     .email("Please enter a valid email")
-    .required("Email is required"),
+    .notRequired(), // Email is optional
   password: Yup.string()
     .min(8, "Password must be at least 8 characters")
     .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
@@ -131,32 +136,29 @@ export default function AccountIntroScreen() {
           </View>
 
           <Formik
-            initialValues={{ email: "", password: "", confirmPassword: "" }}
+            initialValues={{ username: "", email: "", password: "", confirmPassword: "" }}
             validationSchema={accountIntroSchema}
             onSubmit={async (values, { setSubmitting }) => {
               console.log('🟡 [AccountIntroScreen] Form submitted!');
               console.log('🟡 [AccountIntroScreen] Form values:', {
-                email: values.email,
+                username: values.username,
+                email: values.email || '(not provided)',
                 password: '***hidden***'
               });
 
               try {
                 setIsLoading(true);
 
-                // Derive username from email (before @ symbol)
-                const username = values.email.split("@")[0];
-                console.log('🟡 [AccountIntroScreen] Derived username:', username);
-
                 // Phase 1: Create basic account
                 console.log('🟡 [AccountIntroScreen] Calling register() with:', {
-                  username,
-                  email: values.email,
+                  username: values.username,
+                  email: values.email || '',
                   password: '***hidden***'
                 });
 
                 await register({
-                  username,
-                  email: values.email,
+                  username: values.username,
+                  email: values.email || '',
                   password: values.password,
                 });
 
@@ -164,8 +166,8 @@ export default function AccountIntroScreen() {
 
                 // Store Phase 1 data for Phase 2
                 setPhase1Data({
-                  username,
-                  email: values.email,
+                  username: values.username,
+                  email: values.email || '',
                   password: values.password,
                 });
 
@@ -207,8 +209,17 @@ export default function AccountIntroScreen() {
             }) => (
               <>
                 <AppTextInput
+                  icon="person-outline"
+                  placeholder="Username"
+                  autoCapitalize="none"
+                  value={values.username}
+                  onChangeText={handleChange("username")}
+                  onBlur={handleBlur("username")}
+                  error={touched.username ? errors.username : null}
+                />
+                <AppTextInput
                   icon="mail-outline"
-                  placeholder="Email"
+                  placeholder="Email (optional)"
                   autoCapitalize="none"
                   keyboardType="email-address"
                   value={values.email}
