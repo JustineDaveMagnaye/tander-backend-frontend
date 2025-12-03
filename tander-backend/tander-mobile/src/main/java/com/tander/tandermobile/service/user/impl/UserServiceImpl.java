@@ -171,6 +171,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             // Check if user already has a profile
             Profile existingProfile = user.getProfile();
+            Profile profileToSave;
+
             if (existingProfile != null) {
                 // Update existing profile fields
                 LOGGER.info("Updating existing profile (ID: {}) for user: {}", existingProfile.getId(), username);
@@ -187,13 +189,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 existingProfile.setCity(profile.getCity());
                 existingProfile.setCivilStatus(profile.getCivilStatus());
                 existingProfile.setHobby(profile.getHobby());
+                profileToSave = existingProfile;
             } else {
                 // Create new profile and link it to the user
                 LOGGER.info("Creating new profile for user: {}", username);
-                user.setProfileCompleted(true);
                 user.setProfile(profile);
+                profileToSave = profile;
             }
 
+            // ✅ Save the Profile entity first (generates ID if new)
+            Profile savedProfile = profileRepository.save(profileToSave);
+
+            // ✅ Link the saved profile to user and mark as complete
+            user.setProfile(savedProfile);
             user.setProfileCompleted(markAsComplete);
 
             // Generate verification token when profile is marked as complete
@@ -256,9 +264,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 throw new UserNotFoundException("User account has expired. Please register again.");
             }
 
+            // ✅ REMOVED profile completion check for senior-friendly UX
+            // Allow ID verification even if profile not complete (easier for elderly users)
+            // They can complete steps in any order
             if (!Boolean.TRUE.equals(user.getProfileCompleted())) {
-                LOGGER.error("Cannot verify ID for user with incomplete profile: {}", username);
-                throw new UserNotFoundException("Profile must be completed before ID verification.");
+                LOGGER.warn("⚠️ User {} uploading ID without completing profile first - allowing for flexibility", username);
             }
 
             // Validate verification token to prevent ID spoofing
