@@ -20,10 +20,21 @@ export default function RegistrationNavigator() {
   const { completeProfile, phase1Data } = useAuth();
   const toast = useToast();
 
+  // Helper function to convert MM/DD/YYYY to ISO format (yyyy-MM-dd)
+  const convertToISODate = (dateString: string): string => {
+    if (!dateString) return '';
+    const [month, day, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
   const handleRegistration = async (values: any) => {
     try {
+      console.log('🟡 [RegistrationNavigator] Starting Phase 2 registration...');
+      console.log('🟡 [RegistrationNavigator] Form values:', values);
+
       // Check if Phase 1 data exists
       if (!phase1Data) {
+        console.error('🔴 [RegistrationNavigator] No phase1Data found!');
         toast.showToast({
           type: 'error',
           message: 'Please complete account creation first.',
@@ -38,9 +49,14 @@ export default function RegistrationNavigator() {
 
       // Use Phase 1 credentials from context
       const { username, email } = phase1Data;
+      console.log('🟡 [RegistrationNavigator] Phase1Data:', { username, email });
+
+      // Convert date format for backend
+      const isoDate = convertToISODate(values.birthday);
+      console.log('🟡 [RegistrationNavigator] Date conversion:', { original: values.birthday, iso: isoDate });
 
       // Phase 2: Complete profile with all details
-      await completeProfile(username, {
+      const profileData = {
         firstName: values.firstName,
         lastName: values.lastName,
         middleName: values.middleName || '',
@@ -48,13 +64,18 @@ export default function RegistrationNavigator() {
         address: values.address || '',
         phone: values.phone || '',
         email: email,
-        birthDate: values.birthday,
+        birthDate: isoDate,
         age: parseInt(values.age) || 0,
         country: values.country,
         city: values.city,
         civilStatus: values.civilStatus,
         hobby: values.hobby || '',
-      });
+      };
+
+      console.log('🟡 [RegistrationNavigator] Calling completeProfile with:', profileData);
+      await completeProfile(username, profileData);
+
+      console.log('✅ [RegistrationNavigator] Profile completed successfully!');
 
       toast.showToast({
         type: 'success',
@@ -71,8 +92,9 @@ export default function RegistrationNavigator() {
         NavigationService.navigate('Auth', { screen: 'LoginScreen' });
       }, 2000);
     } catch (error: any) {
+      console.error('🔴 [RegistrationNavigator] Phase 2 registration error:', error);
+      console.error('🔴 [RegistrationNavigator] Error message:', error.message);
       toast.error(error.message || 'Registration failed. Please try again.');
-      console.error('Phase 2 registration error:', error);
     }
   };
 
@@ -89,7 +111,7 @@ export default function RegistrationNavigator() {
         civilStatus: "",
         city: "",
         hobby: "",
-        email: "", // TODO: Add email field to Step 1
+        email: phase1Data?.email || "", // Pre-filled from Phase 1 registration
         phone: "",
         address: "",
         photos: [],
