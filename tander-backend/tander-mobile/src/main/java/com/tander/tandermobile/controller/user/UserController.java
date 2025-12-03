@@ -30,7 +30,6 @@ import static com.tander.tandermobile.utils.security.constant.SecurityConstant.J
  *RestController for managing user operations such as GET, POST, and PUT requests.
  */
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/user")
 public class UserController {
 

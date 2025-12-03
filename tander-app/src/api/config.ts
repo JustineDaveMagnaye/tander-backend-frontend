@@ -6,15 +6,17 @@ import { Platform } from 'react-native';
 // - iOS Simulator: http://localhost:8080
 // - Android Emulator: http://10.0.2.2:8080
 // - Physical Device: Replace with your computer's IP address (e.g., http://192.168.1.100:8080)
+// IMPORTANT: No trailing slash! (axios adds it automatically)
 const getApiBaseUrl = () => {
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      return 'https://15b388cffe49.ngrok-free.app'; // Android emulator
+      // Update this with your current tunnel URL (NO trailing slash)
+      return 'https://prerequisite-florida-without-fin.trycloudflare.com'; // ✅ NO trailing slash
     }
-    return 'https://15b388cffe49.ngrok-free.app'; // iOS simulator or web
+    return 'https://prerequisite-florida-without-fin.trycloudflare.com'; // ✅ NO trailing slash
   }
-  // Production URL - update this for production deployment
-  return 'https://15b388cffe49.ngrok-free.app';
+  // Production URL - update this for production deployment (NO trailing slash)
+  return 'https://prerequisite-florida-without-fin.trycloudflare.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
