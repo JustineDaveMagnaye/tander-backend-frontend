@@ -256,9 +256,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 throw new UserNotFoundException("User account has expired. Please register again.");
             }
 
+            // ✅ REMOVED profile completion check for senior-friendly UX
+            // Allow ID verification even if profile not complete (easier for elderly users)
+            // They can complete steps in any order
             if (!Boolean.TRUE.equals(user.getProfileCompleted())) {
-                LOGGER.error("Cannot verify ID for user with incomplete profile: {}", username);
-                throw new UserNotFoundException("Profile must be completed before ID verification.");
+                LOGGER.warn("⚠️ User {} uploading ID without completing profile first - allowing for flexibility", username);
             }
 
             // Validate verification token to prevent ID spoofing
