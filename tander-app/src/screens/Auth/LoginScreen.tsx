@@ -25,6 +25,8 @@ import { useAuth } from "@/src/hooks/useAuth";
 export default function LoginScreen() {
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showProfileIncomplete, setShowProfileIncomplete] = useState(false);
 
   // 🎉 Import Google login handler
   const { login: googleLogin } = useGoogleLogin();
@@ -83,33 +85,23 @@ export default function LoginScreen() {
               onSubmit={async (values, { setSubmitting }) => {
                 try {
                   setIsLoading(true);
+                  setErrorMessage(null);
+                  setShowProfileIncomplete(false);
+
                   await login(values);
-                  Alert.alert("Success", "Login successful!");
                   NavigationService.replace("LoginSuccessScreen");
                 } catch (error: any) {
+                  console.error("Login error:", error);
+
                   // Check if error is due to incomplete profile
                   if (error.profileIncomplete) {
-                    Alert.alert(
-                      "Profile Incomplete",
-                      "You need to complete your profile before logging in. Let's finish your registration!",
-                      [
-                        {
-                          text: "Complete Profile",
-                          onPress: () => {
-                            // Navigate to Step1BasicInfo to complete Phase 2
-                            NavigationService.navigate("Auth", { screen: "Register" });
-                          },
-                        },
-                        {
-                          text: "Cancel",
-                          style: "cancel",
-                        },
-                      ]
-                    );
+                    setShowProfileIncomplete(true);
+                    setErrorMessage("Your profile is incomplete. Please complete your registration to continue.");
+                  } else if (error.code === 'INVALID_CREDENTIALS') {
+                    setErrorMessage("Incorrect username or password. Please try again.");
                   } else {
-                    Alert.alert("Login Failed", error.message || "Please check your credentials and try again.");
+                    setErrorMessage(error.message || "An error occurred. Please try again.");
                   }
-                  console.error("Login error:", error);
                 } finally {
                   setIsLoading(false);
                   setSubmitting(false);
@@ -146,6 +138,21 @@ export default function LoginScreen() {
                     onBlur={handleBlur("password")}
                     error={touched.password ? errors.password : null}
                   />
+
+                  {/* Error Message */}
+                  {errorMessage && (
+                    <View style={styles.errorContainer}>
+                      <Text style={styles.errorText}>{errorMessage}</Text>
+                      {showProfileIncomplete && (
+                        <TouchableOpacity
+                          style={styles.completeProfileButton}
+                          onPress={() => NavigationService.navigate("Auth", { screen: "Register" })}
+                        >
+                          <Text style={styles.completeProfileText}>Complete Profile →</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
 
                   {/* Forgot Password */}
                   <TouchableOpacity onPress={() => console.log("Forgot")}>
@@ -234,6 +241,34 @@ const styles = StyleSheet.create({
     color: colors.accentTeal,
     fontSize: 14,
     fontWeight: "500",
+  },
+  errorContainer: {
+    backgroundColor: "#FEE2E2",
+    borderLeftWidth: 4,
+    borderLeftColor: "#EF4444",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: "#991B1B",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
+  completeProfileButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#DBEAFE",
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  completeProfileText: {
+    color: "#1E40AF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   biometricRow: {
     justifyContent: "center",
