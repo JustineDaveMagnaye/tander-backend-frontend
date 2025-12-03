@@ -40,6 +40,13 @@ export interface ProfileIncompleteError {
   username: string;
 }
 
+export interface IdVerificationError {
+  message: string;
+  idVerified: boolean;
+  idVerificationStatus: string;
+  username: string;
+}
+
 export const authApi = {
   register: async (data: RegisterRequest): Promise<string> => {
     try {
@@ -76,15 +83,25 @@ export const authApi = {
         token: token || '',
       };
     } catch (error: any) {
-      // Handle profile incomplete error (403 with profileCompleted: false)
+      // Handle 403 errors (profile incomplete OR id verification incomplete)
       if (error.response?.status === 403 && error.response?.data) {
         const errorData = error.response.data;
+
+        // Check for profile incomplete error
         if (errorData.profileCompleted === false) {
-          // Create custom error with profile incomplete info
           const profileError: any = new Error(errorData.message);
           profileError.profileIncomplete = true;
           profileError.username = errorData.username;
           throw profileError;
+        }
+
+        // Check for ID verification incomplete error
+        if (errorData.idVerified === false) {
+          const idError: any = new Error(errorData.message);
+          idError.idVerificationIncomplete = true;
+          idError.username = errorData.username;
+          idError.idVerificationStatus = errorData.idVerificationStatus;
+          throw idError;
         }
       }
 
