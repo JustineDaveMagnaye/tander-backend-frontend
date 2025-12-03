@@ -76,6 +76,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateProfile = async (username: string, data: CompleteProfileRequest, markAsComplete: boolean = false) => {
+    try {
+      console.log(`🟡 [AuthProvider.updateProfile] PATCH request with markAsComplete=${markAsComplete}`);
+      await authApi.updateProfile(username, data, markAsComplete);
+      console.log('✅ [AuthProvider.updateProfile] Success');
+    } catch (error) {
+      console.error('🔴 [AuthProvider.updateProfile] Error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await authApi.logout();
@@ -97,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         login,
         register,
         completeProfile,
+        updateProfile,
         logout,
         checkAuth,
         setPhase1Data,

@@ -48,7 +48,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
     setTouched,
   } = useFormikContext<any>();
 
-  const { completeProfile, phase1Data } = useAuth();
+  const { updateProfile, phase1Data } = useAuth();
   const toast = useToast();
 
   // Loading state
@@ -216,10 +216,11 @@ export default function Step1BasicInfo({ navigation }: Props) {
 
       console.log("🟡 [Step1BasicInfo] Profile data email field:", profileData.email);
 
-      // Save profile with markAsComplete=false (partial save)
-      await completeProfile(phase1Data.username, profileData, false);
+      // Update profile using PATCH (partial save with markAsComplete=false)
+      console.log("🟡 [Step1BasicInfo] Using PATCH /update-profile");
+      await updateProfile(phase1Data.username, profileData, false);
 
-      console.log("✅ [Step1BasicInfo] Profile saved successfully!");
+      console.log("✅ [Step1BasicInfo] Profile updated successfully!");
 
       // Show success toast
       toast.success("Profile saved successfully!");

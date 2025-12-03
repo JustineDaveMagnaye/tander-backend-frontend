@@ -111,6 +111,18 @@ export const authApi = {
     }
   },
 
+  updateProfile: async (username: string, data: CompleteProfileRequest, markAsComplete: boolean = false): Promise<string> => {
+    try {
+      console.log(`🟡 [authApi.updateProfile] PATCH request with markAsComplete=${markAsComplete}`);
+      const response = await apiClient.patch(`/user/update-profile?username=${username}&markAsComplete=${markAsComplete}`, data);
+      console.log('✅ [authApi.updateProfile] Success:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('🔴 [authApi.updateProfile] Error:', error.response?.data);
+      throw new Error(error.response?.data?.message || 'Profile update failed');
+    }
+  },
+
   logout: async (): Promise<void> => {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);

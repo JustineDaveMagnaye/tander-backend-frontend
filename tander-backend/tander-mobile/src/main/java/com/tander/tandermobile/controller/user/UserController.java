@@ -96,6 +96,27 @@ public class UserController {
     }
 
     /**
+     * Updates existing user profile with new information.
+     *
+     * @param username the username of the user
+     * @param profile the updated profile information
+     * @param markAsComplete whether to mark profile as complete (default: false)
+     * @return success message indicating profile update
+     * @throws UserNotFoundException if user is not found
+     */
+    @PatchMapping("/update-profile")
+    public ResponseEntity<String> updateProfile(
+            @RequestParam String username,
+            @RequestBody Profile profile,
+            @RequestParam(defaultValue = "false") boolean markAsComplete) throws UserNotFoundException {
+        User user = userService.completeProfile(username, profile, markAsComplete);
+        String message = markAsComplete
+            ? "Profile completed successfully. You can now login."
+            : "Profile updated successfully.";
+        return new ResponseEntity<>(message, null, HttpStatus.OK);
+    }
+
+    /**
      * Authenticates the user and generates a JWT token.
      * Checks if user has completed profile registration (phase 2).
      *
