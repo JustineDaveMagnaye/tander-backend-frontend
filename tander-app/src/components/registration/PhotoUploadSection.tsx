@@ -31,7 +31,47 @@ export default function PhotoUploadSection({
 }: PhotoUploadSectionProps) {
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
 
-  // Request permissions and pick image
+  // Take photo with camera (SENIOR-FRIENDLY)
+  const takePhoto = async (index: number) => {
+    try {
+      setLoadingIndex(index);
+
+      // Request camera permissions
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Camera Permission Required",
+            "Please allow camera access to scan your ID. Go to Settings > Tander > Camera to enable."
+          );
+          setLoadingIndex(null);
+          return;
+        }
+      }
+
+      // Launch camera with senior-friendly settings
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [4, 3], // Better for ID cards
+        quality: 1, // High quality for OCR
+        exif: false, // Don't need location data
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const newPhotos = [...photos];
+        newPhotos[index] = result.assets[0].uri;
+        onPhotosChange(newPhotos);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Camera Error", "Failed to take photo. Please try again.");
+    } finally {
+      setLoadingIndex(null);
+    }
+  };
+
+  // Choose from gallery (backup option)
   const pickImage = async (index: number) => {
     try {
       setLoadingIndex(index);
@@ -43,7 +83,7 @@ export default function PhotoUploadSection({
         if (status !== "granted") {
           Alert.alert(
             "Permission Denied",
-            "Sorry, we need camera roll permissions to upload photos."
+            "Sorry, we need photo library permissions to upload photos."
           );
           setLoadingIndex(null);
           return;
@@ -54,8 +94,8 @@ export default function PhotoUploadSection({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        aspect: [4, 3],
+        quality: 1, // High quality for OCR
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -69,6 +109,29 @@ export default function PhotoUploadSection({
     } finally {
       setLoadingIndex(null);
     }
+  };
+
+  // Show options for camera or gallery (SENIOR-FRIENDLY)
+  const showPhotoOptions = (index: number) => {
+    Alert.alert(
+      "Add ID Photo",
+      "Choose how you want to add your ID photo:",
+      [
+        {
+          text: "📸 Use Camera (Recommended)",
+          onPress: () => takePhoto(index),
+        },
+        {
+          text: "🖼️ Choose from Photos",
+          onPress: () => pickImage(index),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   // Remove image
@@ -103,7 +166,7 @@ export default function PhotoUploadSection({
             isFirstSlot && styles.firstUploadBox,
             hasPhoto && styles.uploadBoxWithPhoto,
           ]}
-          onPress={() => pickImage(i)}
+          onPress={() => showPhotoOptions(i)}
           onLongPress={() => hasPhoto && removeImage(i)}
         >
           {isLoading ? (
@@ -121,12 +184,12 @@ export default function PhotoUploadSection({
           ) : (
             <View style={styles.emptySlotContent}>
               <Ionicons
-                name={isFirstSlot ? "cloud-upload-outline" : "add"}
-                size={isFirstSlot ? 32 : 28}
+                name={isFirstSlot ? "camera" : "add"}
+                size={isFirstSlot ? 36 : 28}
                 color={isFirstSlot ? colors.primary : colors.textMuted}
               />
               {isFirstSlot && (
-                <Text style={styles.firstSlotText}>Add Photo</Text>
+                <Text style={styles.firstSlotText}>Scan ID</Text>
               )}
             </View>
           )}
@@ -153,6 +216,20 @@ export default function PhotoUploadSection({
       <View style={[styles.grid, { gap: 12 }]}>{renderSlots()}</View>
 
       <Text style={styles.helperText}>{helperText}</Text>
+
+      {/* Senior-Friendly Tips */}
+      {uploadedCount === 0 && (
+        <View style={styles.tipsContainer}>
+          <Text style={styles.tipsTitle}>📸 Tips for Clear Photos:</Text>
+          <View style={styles.tipsList}>
+            <Text style={styles.tipItem}>✓ Use good lighting (natural light is best)</Text>
+            <Text style={styles.tipItem}>✓ Place ID flat on a dark surface</Text>
+            <Text style={styles.tipItem}>✓ Make sure birthdate is clearly visible</Text>
+            <Text style={styles.tipItem}>✓ Hold phone steady or use a table</Text>
+          </View>
+        </View>
+      )}
+
       {uploadedCount > 0 && (
         <Text style={styles.removeHintText}>
           💡 Tip: Long press on a photo to remove it
@@ -284,5 +361,33 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 8,
     fontStyle: "italic",
+  },
+
+  // Senior-Friendly Tips Styles
+  tipsContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: "#FFF9F0",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFE4C4",
+  },
+
+  tipsTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+
+  tipsList: {
+    gap: 8,
+  },
+
+  tipItem: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    paddingLeft: 8,
   },
 });

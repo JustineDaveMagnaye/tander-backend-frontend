@@ -33,7 +33,10 @@ logging:
     name: build/log/${spring.application.name}.log
 
 jwt:
-  secret: "thebigbrownfoxjumpsoverthelazydog"
+  # SECURITY: Use environment variable in production: ${JWT_SECRET}
+  # This is a 512-bit cryptographically secure random key (base64 encoded)
+  # To use env var: secret: ${JWT_SECRET:default_key_for_dev_only}
+  secret: "giOOUrsRQEu7NLAWQz0WVdDm4wuRKsLX6xCUb5Qp1cnraISzIvjPlb6ZPccQ553wFD5nu6A3VMWoX0XgItTlBg=="
 
 # File upload configuration
 file:
@@ -50,3 +53,32 @@ tesseract:
   # Linux example: /usr/share/tesseract-ocr/4.00/tessdata
   datapath: "C:/Program Files/Tesseract-OCR/tessdata"
   language: "eng"
+
+# Google reCAPTCHA v3 configuration (100% FREE, invisible to users)
+# Get keys from: https://www.google.com/recaptcha/admin/create
+recaptcha:
+  # SECURITY: Use environment variables in production
+  # Get your keys from: https://www.google.com/recaptcha/admin
+  secret-key: ${RECAPTCHA_SECRET_KEY:6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe}  # Test key (always passes)
+  site-key: ${RECAPTCHA_SITE_KEY:6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI}    # Test key (for development)
+  verification-url: "https://www.google.com/recaptcha/api/siteverify"
+  # Score threshold: 0.0 (bot) to 1.0 (human). 0.5 is recommended for senior citizens (lenient)
+  score-threshold: 0.3  # Lower threshold for elderly users with less predictable behavior
+  enabled: true  # Set to false to disable for testing
+
+# ID Photo Encryption (AES-256-GCM for GDPR compliance)
+encryption:
+  # SECURITY: Use environment variable in production: ${ENCRYPTION_KEY}
+  # Generate new key: openssl rand -base64 32
+  key: ${ENCRYPTION_KEY:smaNFUGwYWLbNxz93XeGL5XN69Mo0jOXpTG83D3RRrA=}
+  algorithm: "AES/GCM/NoPadding"
+  enabled: true  # Set to false to disable encryption (not recommended for production)
+
+# Data Retention Policy (GDPR Compliance)
+data-retention:
+  # Auto-delete ID photos after successful verification
+  delete-after-verification: true
+  # Keep photos for X days after verification (for audit/dispute resolution)
+  retention-days: 30
+  # Auto-delete soft-deleted accounts and their data
+  delete-soft-deleted-accounts-days: 90

@@ -5,9 +5,12 @@ import com.tander.tandermobile.dto.register.Register;
 import com.tander.tandermobile.domain.user.User;
 import com.tander.tandermobile.domain.user.principal.UserPrincipal;
 import com.tander.tandermobile.exception.domain.*;
+import com.tander.tandermobile.service.ratelimit.RateLimitService;
+import com.tander.tandermobile.service.recaptcha.RecaptchaService;
 import com.tander.tandermobile.service.user.UserService;
 import com.tander.tandermobile.utils.security.jwt.provider.token.JWTTokenProvider;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import oracle.jdbc.proxy.annotation.Post;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +35,8 @@ import static com.tander.tandermobile.utils.security.constant.SecurityConstant.J
 public class UserController {
 
     private final UserService userService;
+    private final RateLimitService rateLimitService;
+    private final RecaptchaService recaptchaService;
     private AuthenticationManager authenticationManager;
     private JWTTokenProvider jwtTokenProvider;
 
@@ -39,12 +44,18 @@ public class UserController {
      * Constructs a new UserController with the provided services.
      *
      * @param userService           service handling user operations
+     * @param rateLimitService      service for rate limiting
+     * @param recaptchaService      service for reCAPTCHA verification
      * @param authenticationManager handles authentication
      * @param jwtTokenProvider      provides JWT token
      */
     @Autowired
-    public UserController(UserService userService, AuthenticationManager authenticationManager, JWTTokenProvider jwtTokenProvider) {
+    public UserController(UserService userService, RateLimitService rateLimitService,
+                          RecaptchaService recaptchaService,
+                          AuthenticationManager authenticationManager, JWTTokenProvider jwtTokenProvider) {
         this.userService = userService;
+        this.rateLimitService = rateLimitService;
+        this.recaptchaService = recaptchaService;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
     }
@@ -84,37 +95,78 @@ public class UserController {
      * @throws UserNotFoundException if user is not found
      */
     @PostMapping("/complete-profile")
-    public ResponseEntity<String> completeProfile(
+    public ResponseEntity<?> completeProfile(
             @RequestParam String username,
             @RequestBody Profile profile,
             @RequestParam(defaultValue = "true") boolean markAsComplete) throws UserNotFoundException {
         User user = userService.completeProfile(username, profile, markAsComplete);
-        String message = markAsComplete
-            ? "Profile completed successfully. Please proceed to ID verification."
-            : "Profile saved successfully.";
-        return new ResponseEntity<>(message, null, HttpStatus.OK);
+
+        if (markAsComplete) {
+            // Return verification token for ID verification phase
+            Map<String, Object> response = Map.of(
+                "message", "Profile completed successfully. Please proceed to ID verification.",
+                "verificationToken", user.getVerificationToken() != null ? user.getVerificationToken() : "",
+                "username", username
+            );
+            return new ResponseEntity<>(response, null, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Profile saved successfully.", null, HttpStatus.OK);
+        }
     }
 
     /**
      * Phase 3 Registration: Automated ID verification using OCR.
      * Extracts birthdate from ID photos, calculates age, and auto-approves if age >= 60.
+     * Protected by: rate limiting + invisible reCAPTCHA v3 (senior-friendly, no interaction).
      *
      * @param username the username of the user to verify
      * @param idPhotoFront front photo of government-issued ID (required)
      * @param idPhotoBack back photo of ID (optional)
+     * @param verificationToken verification token from phase 2 (optional for backward compatibility)
+     * @param recaptchaToken reCAPTCHA v3 token from frontend (optional, defaults to enabled)
+     * @param request HTTP request to extract IP address
      * @return verification result message
      */
     @PostMapping(value = "/verify-id", consumes = "multipart/form-data")
     public ResponseEntity<String> verifyId(
             @RequestParam String username,
             @RequestParam("idPhotoFront") org.springframework.web.multipart.MultipartFile idPhotoFront,
-            @RequestParam(value = "idPhotoBack", required = false) org.springframework.web.multipart.MultipartFile idPhotoBack) {
+            @RequestParam(value = "idPhotoBack", required = false) org.springframework.web.multipart.MultipartFile idPhotoBack,
+            @RequestParam(value = "verificationToken", required = false) String verificationToken,
+            @RequestParam(value = "recaptchaToken", required = false) String recaptchaToken,
+            HttpServletRequest request) {
         try {
-            String result = userService.verifyId(username, idPhotoFront, idPhotoBack);
+            // 1. Rate limiting check (10 req/min per IP)
+            String ipAddress = getClientIpAddress(request);
+            if (!rateLimitService.allowRequest(ipAddress, "/user/verify-id")) {
+                return new ResponseEntity<>("Rate limit exceeded. Please try again later.", null, HttpStatus.TOO_MANY_REQUESTS);
+            }
+
+            // 2. reCAPTCHA verification (invisible, senior-friendly)
+            if (recaptchaService.isEnabled()) {
+                if (!recaptchaService.verifyToken(recaptchaToken, "verify_id")) {
+                    return new ResponseEntity<>("Bot detection failed. Please try again.", null, HttpStatus.FORBIDDEN);
+                }
+            }
+
+            // 3. Process ID verification
+            String result = userService.verifyId(username, idPhotoFront, idPhotoBack, verificationToken);
             return new ResponseEntity<>(result, null, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), null, HttpStatus.BAD_REQUEST);
         }
+    }
+
+    /**
+     * Extracts client IP address from HTTP request, handling X-Forwarded-For header.
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            // X-Forwarded-For can contain multiple IPs, take the first one
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /**
@@ -144,6 +196,19 @@ public class UserController {
             Map<String, Object> errorResponse = Map.of(
                 "message", "Please complete your profile registration before logging in.",
                 "profileCompleted", false,
+                "username", loginUser.getUsername()
+            );
+            return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+        }
+
+        // Check if user has completed ID verification (phase 3)
+        // Treat null as false (legacy records or unverified accounts)
+        if (!Boolean.TRUE.equals(loginUser.getIdVerified())) {
+            // Return structured error response with idVerified status
+            Map<String, Object> errorResponse = Map.of(
+                "message", "Please complete ID verification before logging in. You must be 60+ years old.",
+                "idVerified", false,
+                "idVerificationStatus", loginUser.getIdVerificationStatus() != null ? loginUser.getIdVerificationStatus() : "PENDING",
                 "username", loginUser.getUsername()
             );
             return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);

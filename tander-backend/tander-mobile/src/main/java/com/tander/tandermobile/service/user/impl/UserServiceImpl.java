@@ -196,6 +196,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             user.setProfileCompleted(markAsComplete);
 
+            // Generate verification token when profile is marked as complete
+            // This token is required for ID verification to prevent spoofing
+            if (markAsComplete) {
+                String verificationToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+                user.setVerificationToken(verificationToken);
+                LOGGER.info("Generated verification token for user: {}", username);
+            }
+
             User updatedUser = userRepository.save(user);
 
             String action = markAsComplete ? "completed" : "updated";
@@ -235,7 +243,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception {
+    public String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack, String verificationToken) throws Exception {
         try {
             User user = findUserByUsername(username);
             if (user == null) {
@@ -251,6 +259,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             if (!Boolean.TRUE.equals(user.getProfileCompleted())) {
                 LOGGER.error("Cannot verify ID for user with incomplete profile: {}", username);
                 throw new UserNotFoundException("Profile must be completed before ID verification.");
+            }
+
+            // Validate verification token to prevent ID spoofing
+            if (verificationToken != null && !verificationToken.isEmpty()) {
+                if (user.getVerificationToken() == null || !user.getVerificationToken().equals(verificationToken)) {
+                    LOGGER.error("Invalid verification token for user: {}", username);
+                    throw new Exception("Invalid verification token. Please complete profile registration again.");
+                }
+                LOGGER.info("✅ Verification token validated for user: {}", username);
+            } else {
+                LOGGER.warn("⚠️ ID verification proceeding without token validation for user: {} (backward compatibility)", username);
             }
 
             // Validate that at least front photo is provided

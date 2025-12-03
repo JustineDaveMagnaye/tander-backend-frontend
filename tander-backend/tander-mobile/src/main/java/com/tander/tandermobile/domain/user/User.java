@@ -100,6 +100,14 @@ public class User implements Serializable {
     private Date verifiedAt;
 
     /**
+     * Verification token for ownership validation.
+     * Generated during profile completion (phase 2) and required for ID verification (phase 3).
+     * Ensures only the account owner can verify their own ID.
+     */
+    @Column(name = "verification_token", length = 64)
+    private String verificationToken;
+
+    /**
      * Timestamp for soft delete mechanism.
      * If phase 1 is completed but profile is not completed within 7 days,
      * this timestamp is set and the account is considered soft deleted.

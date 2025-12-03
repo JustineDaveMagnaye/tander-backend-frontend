@@ -52,9 +52,10 @@ public interface UserService {
      * @param username the username of the user to verify
      * @param idPhotoFront front photo of the government-issued ID
      * @param idPhotoBack back photo of the ID (optional)
+     * @param verificationToken verification token from phase 2 (optional for backward compatibility)
      * @return verification result message
      * @throws UserNotFoundException if user is not found
-     * @throws Exception if OCR processing fails or age requirement not met
+     * @throws Exception if OCR processing fails, age requirement not met, or token validation fails
      */
-    String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception;
+    String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack, String verificationToken) throws Exception;
 }
