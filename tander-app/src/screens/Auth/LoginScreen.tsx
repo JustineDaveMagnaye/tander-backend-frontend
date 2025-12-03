@@ -106,8 +106,18 @@ export default function LoginScreen() {
                         },
                       ]
                     );
+                  } else if (error.code === 'INVALID_CREDENTIALS') {
+                    // Show user-friendly message for incorrect credentials
+                    Alert.alert(
+                      "Login Failed",
+                      "Incorrect username or password. Please try again."
+                    );
                   } else {
-                    Alert.alert("Login Failed", error.message || "Please check your credentials and try again.");
+                    // Show generic error message for other errors
+                    Alert.alert(
+                      "Login Failed",
+                      error.message || "An error occurred. Please try again."
+                    );
                   }
                   console.error("Login error:", error);
                 } finally {

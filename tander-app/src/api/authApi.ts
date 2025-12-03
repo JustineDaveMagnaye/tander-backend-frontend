@@ -87,6 +87,14 @@ export const authApi = {
           throw profileError;
         }
       }
+
+      // Handle authentication failure (401 - invalid credentials)
+      if (error.response?.status === 401) {
+        const authError: any = new Error('Incorrect username or password');
+        authError.code = 'INVALID_CREDENTIALS';
+        throw authError;
+      }
+
       throw new Error(error.response?.data?.message || 'Login failed');
     }
   },
