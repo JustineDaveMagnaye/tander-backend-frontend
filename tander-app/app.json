@@ -21,7 +21,9 @@
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true,
+      "package": "com.tanderapp"
     },
 
     "web": {
@@ -39,7 +41,8 @@
           "backgroundColor": "#ffffff",
           "dark": { "backgroundColor": "#000000" }
         }
-      ]
+      ],
+      "./plugins/withAndroidNetworkSecurityConfig.js"
     ],
 
     "experiments": {
