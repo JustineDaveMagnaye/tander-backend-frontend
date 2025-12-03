@@ -15,7 +15,7 @@ export interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   completeProfile: (username: string, data: CompleteProfileRequest, markAsComplete?: boolean) => Promise<void>;
-  verifyId: (username: string, idPhotoFrontUri: string, idPhotoBackUri?: string) => Promise<void>;
+  verifyId: (username: string, idPhotoFrontUri: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setPhase1Data: (data: Phase1RegistrationData | null) => void;

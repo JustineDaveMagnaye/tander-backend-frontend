@@ -111,33 +111,21 @@ export const authApi = {
     }
   },
 
-  verifyId: async (username: string, idPhotoFrontUri: string, idPhotoBackUri?: string): Promise<string> => {
+  verifyId: async (username: string, idPhotoFrontUri: string): Promise<string> => {
     try {
       console.log(`🟡 [authApi.verifyId] Verifying ID for username: ${username}`);
       console.log(`🟡 [authApi.verifyId] Front photo URI: ${idPhotoFrontUri}`);
-      if (idPhotoBackUri) {
-        console.log(`🟡 [authApi.verifyId] Back photo URI: ${idPhotoBackUri}`);
-      }
 
       // Create FormData for multipart upload
       const formData = new FormData();
       formData.append('username', username);
 
-      // Add front photo
+      // Add front photo only (back is no longer required)
       formData.append('idPhotoFront', {
         uri: idPhotoFrontUri,
         type: 'image/jpeg',
         name: 'id-front.jpg',
       } as any);
-
-      // Add back photo if provided
-      if (idPhotoBackUri) {
-        formData.append('idPhotoBack', {
-          uri: idPhotoBackUri,
-          type: 'image/jpeg',
-          name: 'id-back.jpg',
-        } as any);
-      }
 
       console.log('🟡 [authApi.verifyId] Sending multipart form data...');
 

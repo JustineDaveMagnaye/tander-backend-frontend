@@ -34,7 +34,7 @@ export default function Step2IdVerification({ navigation }: Props) {
 
   // Initialize state if not present in Formik
   const [idPhotos, setIdPhotos] = useState<string[]>(
-    values.idPhotos || Array(3).fill("")
+    values.idPhotos || [""]
   );
   const [isVerifying, setIsVerifying] = useState(false);
 
@@ -49,17 +49,17 @@ export default function Step2IdVerification({ navigation }: Props) {
     setFieldValue("idPhotos", newIdPhotos);
   };
 
-  // Check if can proceed (at least 2 photos: front and back)
+  // Check if can proceed (only front photo required)
   const uploadedIdPhotos = idPhotos.filter((id) => id !== "").length;
-  const canProceed = uploadedIdPhotos >= 2;
+  const canProceed = uploadedIdPhotos >= 1;
 
   // Validate and proceed to next step
   const validateAndProceed = async () => {
-    // Validation: At least 2 ID photos (front and back)
-    if (uploadedIdPhotos < 2) {
+    // Validation: At least 1 ID photo (front only)
+    if (uploadedIdPhotos < 1) {
       Alert.alert(
-        "ID Photos Required",
-        "Please upload at least 2 photos of your ID (front and back) to continue.",
+        "ID Photo Required",
+        "Please upload a clear photo of the front of your ID to continue.",
         [{ text: "OK" }]
       );
       return;
@@ -82,23 +82,19 @@ export default function Step2IdVerification({ navigation }: Props) {
       });
 
       console.log("🟡 [Step2IdVerification] Calling verifyId...");
-      console.log("🟡 [Step2IdVerification] ID Photos:", idPhotos);
+      console.log("🟡 [Step2IdVerification] ID Photo:", idPhotos[0]);
 
-      // Get photo URIs (assuming PhotoUploadSection returns local file URIs or base64)
+      // Get photo URI (front only)
       const idPhotoFrontUri = idPhotos[0];
-      const idPhotoBackUri = idPhotos[1] || undefined;
 
       if (!idPhotoFrontUri) {
         throw new Error("Front ID photo is required");
       }
 
       console.log("🟡 [Step2IdVerification] Front URI:", idPhotoFrontUri);
-      if (idPhotoBackUri) {
-        console.log("🟡 [Step2IdVerification] Back URI:", idPhotoBackUri);
-      }
 
-      // Call verifyId API with photo URIs
-      await verifyId(phase1Data.username, idPhotoFrontUri, idPhotoBackUri);
+      // Call verifyId API with front photo URI only
+      await verifyId(phase1Data.username, idPhotoFrontUri);
 
       console.log("✅ [Step2IdVerification] ID verified successfully!");
 
@@ -141,7 +137,7 @@ export default function Step2IdVerification({ navigation }: Props) {
           <Text style={styles.stepText}>Step 2 of 4</Text>
           <Text style={styles.title}>ID Verification</Text>
           <Text style={styles.subtitle}>
-            Upload clear photos of your valid ID (front and back) to verify your identity and ensure a safe community.
+            Upload a clear photo of the front of your valid ID to verify your age and ensure a safe community.
           </Text>
         </Animated.View>
 
@@ -153,12 +149,12 @@ export default function Step2IdVerification({ navigation }: Props) {
           }}
         >
           <PhotoUploadSection
-            title="Government-Issued ID"
-            helperText="Upload front and back of your ID (minimum 2 photos, maximum 3)"
+            title="Government-Issued ID (Front Only)"
+            helperText="Upload the front of your ID where your birthdate is visible"
             photos={idPhotos}
             onPhotosChange={handleIdPhotosChange}
-            maxPhotos={3}
-            columns={3}
+            maxPhotos={1}
+            columns={1}
           />
 
           {/* Info Card */}
@@ -214,7 +210,7 @@ export default function Step2IdVerification({ navigation }: Props) {
               <Text
                 style={[styles.nextText, !canProceed && styles.nextTextDisabled]}
               >
-                {canProceed ? "Continue to Photos" : "Upload ID Photos"}
+                {canProceed ? "Continue to Photos" : "Upload ID Photo"}
               </Text>
               <Ionicons
                 name="chevron-forward"
