@@ -68,69 +68,44 @@ public class IdVerificationServiceImpl implements IdVerificationService {
             user.setIdVerificationStatus("PROCESSING");
             userRepository.save(user);
 
-            // Save ID photos to D:/ drive
+            // Save ID photo to D:/ drive (front only, back is optional/deprecated)
             String frontPhotoPath = saveIdPhoto(idPhotoFront, user.getUsername(), "front");
-            String backPhotoPath = saveIdPhoto(idPhotoBack, user.getUsername(), "back");
 
-            // Store file paths in user entity
+            // Store file path in user entity
             user.setIdPhotoFrontUrl(frontPhotoPath);
-            user.setIdPhotoBackUrl(backPhotoPath);
             userRepository.save(user);
 
-            LOGGER.info("📸 ID photos saved - Front: {}, Back: {}", frontPhotoPath, backPhotoPath);
+            LOGGER.info("📸 ID photo saved - Front: {}", frontPhotoPath);
 
             // Check image quality before OCR processing
-            LOGGER.info("🔍 Checking front photo quality...");
+            LOGGER.info("🔍 Checking photo quality...");
             boolean isFrontQualityOk = isImageQualityAcceptable(idPhotoFront);
 
             if (!isFrontQualityOk) {
-                // If front is blurry, check if back photo is available and clear
-                if (idPhotoBack != null && !idPhotoBack.isEmpty()) {
-                    LOGGER.info("🔍 Front photo blurry, checking back photo quality...");
-                    boolean isBackQualityOk = isImageQualityAcceptable(idPhotoBack);
-
-                    if (!isBackQualityOk) {
-                        // Both photos are blurry
-                        LOGGER.error("❌ Both ID photos are too blurry");
-                        user.setIdVerificationStatus("FAILED");
-                        user.setVerificationFailureReason("Image quality too low. Please ensure photos are clear, well-lit, and not blurry.");
-                        user.setIdVerified(false);
-                        user.setVerifiedAt(new Date());
-                        userRepository.save(user);
-                        throw new Exception("Image quality too low. Please retake clear, non-blurry photos of your ID.");
-                    }
-                } else {
-                    // Only front photo provided and it's blurry
-                    LOGGER.error("❌ Front ID photo is too blurry");
-                    user.setIdVerificationStatus("FAILED");
-                    user.setVerificationFailureReason("Front ID photo is too blurry. Please ensure the photo is clear and well-lit.");
-                    user.setIdVerified(false);
-                    user.setVerifiedAt(new Date());
-                    userRepository.save(user);
-                    throw new Exception("Front ID photo is too blurry. Please retake a clear, non-blurry photo.");
-                }
+                // Photo is too blurry
+                LOGGER.error("❌ ID photo is too blurry");
+                user.setIdVerificationStatus("FAILED");
+                user.setVerificationFailureReason("ID photo is too blurry. Please ensure the photo is clear, well-lit, and not blurry.");
+                user.setIdVerified(false);
+                user.setVerifiedAt(new Date());
+                userRepository.save(user);
+                throw new Exception("ID photo is too blurry. Please retake a clear, non-blurry photo of the front of your ID.");
             }
 
             LOGGER.info("✅ Image quality check passed");
 
-            // Extract text from front photo (primary)
+            // Extract text from front photo
             String extractedText = extractTextFromImage(idPhotoFront);
             LOGGER.info("📄 Extracted text from ID: {}", extractedText);
 
-            // If front photo fails, try back photo
-            if (extractedText.isEmpty() && idPhotoBack != null && !idPhotoBack.isEmpty()) {
-                LOGGER.info("🔄 Front extraction empty, trying back photo...");
-                extractedText = extractTextFromImage(idPhotoBack);
-            }
-
             if (extractedText.isEmpty()) {
-                LOGGER.error("❌ No text extracted from ID images");
+                LOGGER.error("❌ No text extracted from ID photo");
                 user.setIdVerificationStatus("FAILED");
-                user.setVerificationFailureReason("Unable to extract text from ID. Please ensure the image is clear and well-lit.");
+                user.setVerificationFailureReason("Unable to extract text from ID. Please ensure the photo is clear and well-lit.");
                 user.setIdVerified(false);
                 user.setVerifiedAt(new Date());
                 userRepository.save(user);
-                throw new Exception("Unable to extract text from ID images");
+                throw new Exception("Unable to extract text from ID photo. Please ensure it's clear and all text is visible.");
             }
 
             // Parse birthdate from extracted text
