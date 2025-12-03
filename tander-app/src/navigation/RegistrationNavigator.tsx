@@ -4,8 +4,9 @@ import React from "react";
 
 import RegistrationComplete from "../screens/Registration/RegistrationComplete";
 import Step1BasicInfo from "../screens/Registration/Step1BasicInfo";
-import Step2Upload from "../screens/Registration/Step2Upload";
-import Step3AboutYou from "../screens/Registration/Step3AboutYou";
+import Step2IdVerification from "../screens/Registration/Step2IdVerification";
+import Step3Upload from "../screens/Registration/Step3Upload";
+import Step4AboutYou from "../screens/Registration/Step4AboutYou";
 
 import RegistrationSchema from "../context/RegistrationSchema";
 import { useAuth } from "../hooks/useAuth";
@@ -145,7 +146,7 @@ export default function RegistrationNavigator() {
         />
         <Stack.Screen
           name="Step2"
-          component={Step2Upload}
+          component={Step2IdVerification}
           options={{
             animation: "slide_from_right",
             animationDuration: 350,
@@ -153,7 +154,15 @@ export default function RegistrationNavigator() {
         />
         <Stack.Screen
           name="Step3"
-          component={Step3AboutYou}
+          component={Step3Upload}
+          options={{
+            animation: "slide_from_right",
+            animationDuration: 350,
+          }}
+        />
+        <Stack.Screen
+          name="Step4"
+          component={Step4AboutYou}
           options={{
             animation: "slide_from_right",
             animationDuration: 350,

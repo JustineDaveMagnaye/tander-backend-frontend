@@ -111,6 +111,18 @@ export const authApi = {
     }
   },
 
+  verifyId: async (username: string): Promise<string> => {
+    try {
+      console.log(`🟡 [authApi.verifyId] Verifying ID for username: ${username}`);
+      const response = await apiClient.post(`/user/verify-id?username=${username}`);
+      console.log('✅ [authApi.verifyId] Success:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('🔴 [authApi.verifyId] Error:', error.response?.data);
+      throw new Error(error.response?.data?.message || 'ID verification failed');
+    }
+  },
+
   logout: async (): Promise<void> => {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);

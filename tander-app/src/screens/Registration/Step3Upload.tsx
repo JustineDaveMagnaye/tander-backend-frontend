@@ -14,10 +14,10 @@ import PhotoUploadSection from "../../components/registration/PhotoUploadSection
 import ProgressBar from "../../components/ui/ProgressBar";
 import colors from "../../config/colors";
 import { useSlideUp } from "../../hooks/useFadeIn";
-import { Step2Nav } from "../../navigation/NavigationTypes";
+import { Step3Nav } from "../../navigation/NavigationTypes";
 
 interface Props {
-  navigation: Step2Nav;
+  navigation: Step3Nav;
 }
 
 interface FormValues {
@@ -25,7 +25,7 @@ interface FormValues {
   seniorCitizenId: string[];
 }
 
-export default function Step2Upload({ navigation }: Props) {
+export default function Step3Upload({ navigation }: Props) {
   const { values, setFieldValue } = useFormikContext<FormValues>();
 
   // Initialize state if not present in Formik
@@ -71,7 +71,7 @@ export default function Step2Upload({ navigation }: Props) {
     // Save to Formik and proceed
     setFieldValue("photos", photos);
     setFieldValue("seniorCitizenId", seniorCitizenId);
-    navigation.navigate("Step3");
+    navigation.navigate("Step4");
   };
 
   // Handle photo updates
@@ -98,7 +98,7 @@ export default function Step2Upload({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* Progress Bar */}
-        <ProgressBar step={2} total={3} />
+        <ProgressBar step={3} total={4} />
 
         {/* ANIMATED Step Indicator */}
         <Animated.View
@@ -107,7 +107,7 @@ export default function Step2Upload({ navigation }: Props) {
             transform: [{ translateY: stepTextAnim.translateY }],
           }}
         >
-          <Text style={styles.stepText}>Step 2 of 3</Text>
+          <Text style={styles.stepText}>Step 3 of 4</Text>
         </Animated.View>
 
         {/* ANIMATED Upload Photos Section */}
