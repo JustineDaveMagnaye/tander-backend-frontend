@@ -31,17 +31,17 @@ public class User implements Serializable {
     @Convert(converter = StringListConverter.class)
     private List<String> authorities = new ArrayList<>();
 
-    private boolean isActive;
-    private boolean isLocked;
+    private Boolean isActive;
+    private Boolean isLocked;
 
     /**
      * Indicates if the user has completed profile registration (phase 2).
      * false = phase 1 only (basic account created)
      * true = phase 2 completed (profile information added)
-     * Note: Nullable at DB level for migration compatibility, but always set in application code
+     * null = legacy records or uninitialized state (treated as false)
      */
     @Column(name = "profile_completed", nullable = true)
-    private boolean profileCompleted = false;
+    private Boolean profileCompleted = false;
 
     /**
      * Timestamp for soft delete mechanism.
