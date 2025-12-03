@@ -30,8 +30,13 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    // Required for ngrok/cloudflare tunnels to work properly
+    'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
+    'User-Agent': 'TanderMobileApp/1.0', // Identify as mobile app
   },
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for tunnel latency (30 seconds)
+  maxRedirects: 5, // Follow redirects from tunnels
+  validateStatus: (status) => status < 500, // Accept 4xx responses (for better error handling)
 });
 
 apiClient.interceptors.request.use(
