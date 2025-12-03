@@ -246,7 +246,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView edges={["top"]} style={styles.headerView}>
-        <ProgressBar step={1} total={3} />
+        <ProgressBar step={1} total={4} />
 
         {/* ANIMATED HEADER & LOGO */}
         <Animated.View
@@ -475,7 +475,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
                 <Text
                   style={[styles.nextText, !isFormComplete && styles.nextTextMuted]}
                 >
-                  {isFormComplete ? "Continue to Photos" : "Complete All Fields"}
+                  {isFormComplete ? "Continue to ID Verification" : "Complete All Fields"}
                 </Text>
                 <Ionicons
                   name="chevron-forward"

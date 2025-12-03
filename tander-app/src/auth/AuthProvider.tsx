@@ -76,6 +76,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const verifyId = async (username: string) => {
+    try {
+      console.log('🟡 [AuthProvider.verifyId] Verifying ID for:', username);
+      await authApi.verifyId(username);
+      console.log('✅ [AuthProvider.verifyId] Success');
+    } catch (error) {
+      console.error('🔴 [AuthProvider.verifyId] Error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await authApi.logout();
@@ -97,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         login,
         register,
         completeProfile,
+        verifyId,
         logout,
         checkAuth,
         setPhase1Data,

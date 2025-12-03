@@ -11,13 +11,13 @@ import {
 } from "react-native";
 
 // Typed navigation
-import { Step3Nav } from "@/src/navigation/NavigationTypes";
+import { Step4Nav } from "@/src/navigation/NavigationTypes";
 
 interface Props {
-  navigation: Step3Nav;
+  navigation: Step4Nav;
 }
 
-export default function Step3AboutYou({ navigation }: Props) {
+export default function Step4AboutYou({ navigation }: Props) {
   const { values, setFieldValue, handleSubmit } = useFormikContext<any>();
 
   return (
@@ -25,8 +25,8 @@ export default function Step3AboutYou({ navigation }: Props) {
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
-      <ProgressBar step={3} total={3} />
-      <Text style={styles.step}>Step 3 of 3</Text>
+      <ProgressBar step={4} total={4} />
+      <Text style={styles.step}>Step 4 of 4</Text>
 
       <View style={styles.card}>
         <Text style={styles.header}>About You</Text>
