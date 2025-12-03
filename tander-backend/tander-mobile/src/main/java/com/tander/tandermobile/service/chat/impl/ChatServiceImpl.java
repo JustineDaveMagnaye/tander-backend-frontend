@@ -39,14 +39,19 @@ public class ChatServiceImpl implements ChatService {
                     conversation.setActive(true);
                     Conversation saved = conversationRepository.save(conversation);
 
-                    auditLogService.logEvent(
-                        user1.getId(),
-                        user1.getUsername(),
+                    auditLogService.logEventWithDetails(
                         AuditEventType.CHAT_CONVERSATION_STARTED,
                         AuditStatus.SUCCESS,
+                        user1.getId(),
+                        user1.getUsername(),
                         "Conversation",
                         saved.getId(),
                         "Started conversation with user: " + user2.getUsername(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null
                     );
 
@@ -71,14 +76,19 @@ public class ChatServiceImpl implements ChatService {
         conversation.setLastMessageAt(new Date());
         conversationRepository.save(conversation);
 
-        auditLogService.logEvent(
-            sender.getId(),
-            sender.getUsername(),
+        auditLogService.logEventWithDetails(
             AuditEventType.CHAT_MESSAGE_SENT,
             AuditStatus.SUCCESS,
+            sender.getId(),
+            sender.getUsername(),
             "ChatMessage",
             savedMessage.getId(),
             "Message sent to user: " + receiver.getUsername(),
+            null,
+            null,
+            null,
+            null,
+            null,
             null
         );
 
@@ -135,14 +145,19 @@ public class ChatServiceImpl implements ChatService {
             message.setStatus(MessageStatus.DELIVERED);
             chatMessageRepository.save(message);
 
-            auditLogService.logEvent(
-                message.getReceiver().getId(),
-                message.getReceiver().getUsername(),
+            auditLogService.logEventWithDetails(
                 AuditEventType.CHAT_MESSAGE_RECEIVED,
                 AuditStatus.SUCCESS,
+                message.getReceiver().getId(),
+                message.getReceiver().getUsername(),
                 "ChatMessage",
                 messageId,
                 "Message delivered",
+                null,
+                null,
+                null,
+                null,
+                null,
                 null
             );
         }
@@ -162,14 +177,19 @@ public class ChatServiceImpl implements ChatService {
         message.setDeletedAt(new Date());
         chatMessageRepository.save(message);
 
-        auditLogService.logEvent(
-            currentUser.getId(),
-            currentUser.getUsername(),
+        auditLogService.logEventWithDetails(
             AuditEventType.CHAT_MESSAGE_DELETED,
             AuditStatus.SUCCESS,
+            currentUser.getId(),
+            currentUser.getUsername(),
             "ChatMessage",
             messageId,
             "Message deleted",
+            null,
+            null,
+            null,
+            null,
+            null,
             null
         );
     }

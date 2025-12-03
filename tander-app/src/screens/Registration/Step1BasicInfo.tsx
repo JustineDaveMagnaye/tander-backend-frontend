@@ -96,6 +96,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
       "firstName",
       "lastName",
       "nickName",
+      "email",
       "birthday",
       "age",
       "country",
@@ -118,6 +119,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
       firstName: true,
       lastName: true,
       nickName: true,
+      email: true,
       birthday: true,
       age: true,
       country: true,
@@ -245,6 +247,19 @@ export default function Step1BasicInfo({ navigation }: Props) {
               error={getErrorString(errors.nickName)}
               onChangeText={(t) => setFieldValue("nickName", t)}
               onBlur={() => setFieldTouched("nickName", true)}
+            />
+
+            {/* EMAIL */}
+            <TextInputField
+              label="Email *"
+              placeholder="Enter your email address"
+              value={values.email}
+              touched={!!touched.email}
+              error={getErrorString(errors.email)}
+              onChangeText={(t) => setFieldValue("email", t)}
+              onBlur={() => setFieldTouched("email", true)}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             {/* BIRTHDAY + AGE (2-column layout) */}

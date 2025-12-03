@@ -20,12 +20,17 @@ import NavigationService from "@/src/navigation/NavigationService";
 
 // 🔥 Our new Google login hook
 import { useGoogleLogin } from "@/src/hooks/useGoogleLogin";
+import { useAuth } from "@/src/hooks/useAuth";
 
 export default function LoginScreen() {
   const [agree, setAgree] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 🎉 Import Google login handler
   const { login: googleLogin } = useGoogleLogin();
+
+  // 🎉 Import auth handler
+  const { login } = useAuth();
 
   // ⭐ GOOGLE LOGIN HANDLER
   const handleGoogleLogin = async () => {
@@ -75,9 +80,19 @@ export default function LoginScreen() {
             <Formik
               initialValues={{ username: "", password: "" }}
               validationSchema={loginSchema}
-              onSubmit={(values) => {
-                console.log("LOGIN:", values);
-                NavigationService.replace("LoginSuccessScreen");
+              onSubmit={async (values, { setSubmitting }) => {
+                try {
+                  setIsLoading(true);
+                  await login(values);
+                  Alert.alert("Success", "Login successful!");
+                  NavigationService.replace("LoginSuccessScreen");
+                } catch (error: any) {
+                  Alert.alert("Login Failed", error.message || "Please check your credentials and try again.");
+                  console.error("Login error:", error);
+                } finally {
+                  setIsLoading(false);
+                  setSubmitting(false);
+                }
               }}
             >
               {({
@@ -118,9 +133,9 @@ export default function LoginScreen() {
 
                   {/* LOGIN */}
                   <GradientButton
-                    title="Login"
+                    title={isLoading ? "Logging in..." : "Login"}
                     onPress={handleSubmit}
-                    disabled={!values.username || !values.password}
+                    disabled={!values.username || !values.password || isLoading}
                     style={{ marginTop: 5 }}
                   />
 
