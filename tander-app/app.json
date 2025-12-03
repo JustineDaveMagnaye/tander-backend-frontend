@@ -12,7 +12,10 @@
     "newArchEnabled": true,
 
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Tander needs access to your camera to scan your ID card for age verification."
+      }
     },
 
     "android": {
@@ -23,7 +26,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
-      "package": "com.tanderapp"
+      "package": "com.tanderapp",
+      "permissions": [
+        "CAMERA"
+      ]
     },
 
     "web": {
@@ -40,6 +46,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": { "backgroundColor": "#000000" }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tander needs access to your camera to scan your ID card for age verification."
         }
       ],
       "./plugins/withAndroidNetworkSecurityConfig.js"

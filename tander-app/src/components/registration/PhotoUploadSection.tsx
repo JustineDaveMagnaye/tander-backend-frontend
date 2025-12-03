@@ -4,6 +4,7 @@ import React from "react";
 import {
   Alert,
   Image,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   View,
 } from "react-native";
 import colors from "../../config/colors";
+import IDCardCameraOverlay from "../camera/IDCardCameraOverlay";
 
 interface PhotoUploadSectionProps {
   title: string;
@@ -30,45 +32,31 @@ export default function PhotoUploadSection({
   columns = 3,
 }: PhotoUploadSectionProps) {
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
+  const [showCameraOverlay, setShowCameraOverlay] = React.useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState<number>(0);
 
-  // Take photo with camera (SENIOR-FRIENDLY)
+  // Take photo with camera (SENIOR-FRIENDLY with ID Card Overlay)
   const takePhoto = async (index: number) => {
     try {
-      setLoadingIndex(index);
-
-      // Request camera permissions
-      if (Platform.OS !== "web") {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert(
-            "Camera Permission Required",
-            "Please allow camera access to scan your ID. Go to Settings > Tander > Camera to enable."
-          );
-          setLoadingIndex(null);
-          return;
-        }
-      }
-
-      // Launch camera with senior-friendly settings
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 3], // Better for ID cards
-        quality: 1, // High quality for OCR
-        exif: false, // Don't need location data
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const newPhotos = [...photos];
-        newPhotos[index] = result.assets[0].uri;
-        onPhotosChange(newPhotos);
-      }
+      setCurrentPhotoIndex(index);
+      setShowCameraOverlay(true);
     } catch (error) {
-      console.error("Error taking photo:", error);
-      Alert.alert("Camera Error", "Failed to take photo. Please try again.");
-    } finally {
-      setLoadingIndex(null);
+      console.error("Error opening camera:", error);
+      Alert.alert("Camera Error", "Failed to open camera. Please try again.");
     }
+  };
+
+  // Handle photo captured from camera overlay
+  const handlePhotoCaptured = (photoUri: string) => {
+    setShowCameraOverlay(false);
+    const newPhotos = [...photos];
+    newPhotos[currentPhotoIndex] = photoUri;
+    onPhotosChange(newPhotos);
+  };
+
+  // Handle camera overlay cancel
+  const handleCameraCancel = () => {
+    setShowCameraOverlay(false);
   };
 
   // Choose from gallery (backup option)
@@ -235,6 +223,18 @@ export default function PhotoUploadSection({
           💡 Tip: Long press on a photo to remove it
         </Text>
       )}
+
+      {/* ID Card Camera Overlay Modal */}
+      <Modal
+        visible={showCameraOverlay}
+        animationType="slide"
+        onRequestClose={handleCameraCancel}
+      >
+        <IDCardCameraOverlay
+          onCapture={handlePhotoCaptured}
+          onCancel={handleCameraCancel}
+        />
+      </Modal>
     </View>
   );
 }
