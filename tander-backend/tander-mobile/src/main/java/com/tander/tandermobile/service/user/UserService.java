@@ -43,4 +43,13 @@ public interface UserService {
      * @throws UserNotFoundException if user is not found
      */
     User completeProfile(String username, Profile profile, boolean markAsComplete) throws UserNotFoundException;
+
+    /**
+     * Phase 3 registration: Marks user as ID verified.
+     *
+     * @param username the username of the user to verify
+     * @return the updated user
+     * @throws UserNotFoundException if user is not found
+     */
+    User verifyId(String username) throws UserNotFoundException;
 }

@@ -90,9 +90,22 @@ public class UserController {
             @RequestParam(defaultValue = "true") boolean markAsComplete) throws UserNotFoundException {
         User user = userService.completeProfile(username, profile, markAsComplete);
         String message = markAsComplete
-            ? "Profile completed successfully. You can now login."
+            ? "Profile completed successfully. Please proceed to ID verification."
             : "Profile saved successfully.";
         return new ResponseEntity<>(message, null, HttpStatus.OK);
+    }
+
+    /**
+     * Phase 3 Registration: Verifies user ID.
+     *
+     * @param username the username of the user to verify
+     * @return success message indicating phase 3 completion
+     * @throws UserNotFoundException if user is not found
+     */
+    @PostMapping("/verify-id")
+    public ResponseEntity<String> verifyId(@RequestParam String username) throws UserNotFoundException {
+        User user = userService.verifyId(username);
+        return new ResponseEntity<>("ID verification completed successfully. You can now login.", null, HttpStatus.OK);
     }
 
     /**
