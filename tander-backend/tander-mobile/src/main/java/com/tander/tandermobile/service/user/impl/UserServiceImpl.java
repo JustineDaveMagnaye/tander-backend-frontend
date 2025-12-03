@@ -227,6 +227,57 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
     }
 
+    @Override
+    public User verifyId(String username) throws UserNotFoundException {
+        try {
+            User user = findUserByUsername(username);
+            if (user == null) {
+                LOGGER.error("User not found for ID verification: {}", username);
+                throw new UserNotFoundException("User not found: " + username);
+            }
+
+            if (user.getSoftDeletedAt() != null) {
+                LOGGER.error("Cannot verify ID for soft-deleted user: {}", username);
+                throw new UserNotFoundException("User account has expired. Please register again.");
+            }
+
+            if (!Boolean.TRUE.equals(user.getProfileCompleted())) {
+                LOGGER.error("Cannot verify ID for user with incomplete profile: {}", username);
+                throw new UserNotFoundException("Profile must be completed before ID verification.");
+            }
+
+            // Mark user as ID verified
+            user.setIdVerified(true);
+            User updatedUser = userRepository.save(user);
+
+            LOGGER.info("ID verification completed for user: {}", username);
+
+            // Log successful ID verification
+            auditLogService.logEvent(
+                    AuditEventType.REGISTRATION_PHASE3_SUCCESS,
+                    AuditStatus.SUCCESS,
+                    updatedUser.getId(),
+                    updatedUser.getUsername(),
+                    "Phase 3 registration (ID verification) completed successfully"
+            );
+
+            return updatedUser;
+        } catch (UserNotFoundException e) {
+            // Log failed ID verification
+            auditLogService.logEvent(
+                    AuditEventType.REGISTRATION_PHASE3_FAILURE,
+                    AuditStatus.FAILURE,
+                    null,
+                    username,
+                    "Phase 3 registration (ID verification) failed: " + e.getMessage(),
+                    null,
+                    null,
+                    e.getMessage()
+            );
+            throw e;
+        }
+    }
+
     private void validateNewUsernameAndEmail(String currentUsername, String newUsername, String newEmail)
             throws UsernameExistsException, EmailExistsException {
         if (StringUtils.isNotBlank(currentUsername)) {

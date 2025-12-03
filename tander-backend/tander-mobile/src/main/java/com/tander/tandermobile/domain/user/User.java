@@ -44,6 +44,15 @@ public class User implements Serializable {
     private Boolean profileCompleted = false;
 
     /**
+     * Indicates if the user has completed ID verification (phase 3).
+     * false = ID verification not yet completed
+     * true = ID verification completed
+     * null = legacy records or uninitialized state (treated as false)
+     */
+    @Column(name = "id_verified", nullable = true)
+    private Boolean idVerified = false;
+
+    /**
      * Timestamp for soft delete mechanism.
      * If phase 1 is completed but profile is not completed within 7 days,
      * this timestamp is set and the account is considered soft deleted.
