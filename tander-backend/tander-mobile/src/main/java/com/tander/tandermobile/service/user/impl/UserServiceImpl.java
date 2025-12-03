@@ -12,7 +12,9 @@ import com.tander.tandermobile.service.audit.AuditLogService;
 import com.tander.tandermobile.service.email.EmailService;
 import com.tander.tandermobile.service.login.attempt.LoginAttemptService;
 import com.tander.tandermobile.service.user.UserService;
+import com.tander.tandermobile.service.verification.IdVerificationService;
 import com.tander.tandermobile.utils.security.enumeration.Role;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -45,6 +47,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private LoginAttemptService loginAttemptService;
     private EmailService emailService;
     private AuditLogService auditLogService;
+    private IdVerificationService idVerificationService;
 
     /**
      * Constructor for injecting UserService and EmailService.
@@ -54,18 +57,21 @@ public class UserServiceImpl implements UserService, UserDetailsService {
      * @param loginAttemptService the service used for managing login
      * @param emailService the service used for sending emails
      * @param auditLogService the service used for audit logging
+     * @param idVerificationService the service used for automated ID verification
      */
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder passwordEncoder,
                            LoginAttemptService loginAttemptService,
                            EmailService emailService,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           IdVerificationService idVerificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptService = loginAttemptService;
         this.emailService = emailService;
         this.auditLogService = auditLogService;
+        this.idVerificationService = idVerificationService;
     }
 
 
@@ -228,7 +234,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User verifyId(String username) throws UserNotFoundException {
+    public String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception {
         try {
             User user = findUserByUsername(username);
             if (user == null) {
@@ -246,23 +252,31 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 throw new UserNotFoundException("Profile must be completed before ID verification.");
             }
 
-            // Mark user as ID verified
-            user.setIdVerified(true);
-            User updatedUser = userRepository.save(user);
+            // Validate that at least front photo is provided
+            if (idPhotoFront == null || idPhotoFront.isEmpty()) {
+                throw new Exception("Front photo of ID is required");
+            }
 
-            LOGGER.info("ID verification completed for user: {}", username);
+            LOGGER.info("🚀 Starting automated ID verification for user: {}", username);
+
+            // Call ID verification service (OCR + age validation)
+            String result = idVerificationService.verifyUserAge(user, idPhotoFront, idPhotoBack);
+
+            LOGGER.info("✅ ID verification completed for user: {}", username);
 
             // Log successful ID verification
             auditLogService.logEvent(
                     AuditEventType.REGISTRATION_PHASE3_SUCCESS,
                     AuditStatus.SUCCESS,
-                    updatedUser.getId(),
-                    updatedUser.getUsername(),
-                    "Phase 3 registration (ID verification) completed successfully"
+                    user.getId(),
+                    user.getUsername(),
+                    "Phase 3 registration (ID verification) completed successfully via automated OCR"
             );
 
-            return updatedUser;
-        } catch (UserNotFoundException e) {
+            return result;
+        } catch (Exception e) {
+            LOGGER.error("❌ ID verification failed for user {}: {}", username, e.getMessage());
+
             // Log failed ID verification
             auditLogService.logEvent(
                     AuditEventType.REGISTRATION_PHASE3_FAILURE,

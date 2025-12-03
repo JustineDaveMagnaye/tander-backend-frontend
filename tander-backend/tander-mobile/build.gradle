@@ -39,6 +39,8 @@ dependencies {
     implementation 'jakarta.mail:jakarta.mail-api:2.1.3'
     implementation 'org.eclipse.angus:jakarta.mail:2.0.0'
 
+    // Tesseract OCR for automated ID verification (100% free)
+    implementation 'net.sourceforge.tess4j:tess4j:5.9.0'
 
     // Optional: add test dependencies back if needed
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

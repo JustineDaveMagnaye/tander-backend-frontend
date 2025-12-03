@@ -7,6 +7,7 @@ import com.tander.tandermobile.domain.user.User;
 import com.tander.tandermobile.exception.domain.*;
 import jakarta.mail.MessagingException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -45,11 +46,15 @@ public interface UserService {
     User completeProfile(String username, Profile profile, boolean markAsComplete) throws UserNotFoundException;
 
     /**
-     * Phase 3 registration: Marks user as ID verified.
+     * Phase 3 registration: Automated ID verification using OCR.
+     * Extracts birthdate from ID, calculates age, and auto-approves if age >= 60.
      *
      * @param username the username of the user to verify
-     * @return the updated user
+     * @param idPhotoFront front photo of the government-issued ID
+     * @param idPhotoBack back photo of the ID (optional)
+     * @return verification result message
      * @throws UserNotFoundException if user is not found
+     * @throws Exception if OCR processing fails or age requirement not met
      */
-    User verifyId(String username) throws UserNotFoundException;
+    String verifyId(String username, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception;
 }
