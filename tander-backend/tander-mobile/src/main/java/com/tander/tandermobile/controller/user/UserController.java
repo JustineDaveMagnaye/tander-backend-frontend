@@ -98,19 +98,25 @@ public class UserController {
      * @throws ProfileIncompleteException if user hasn't completed profile registration
      */
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody User user) {
+    public ResponseEntity<?> login(@RequestBody User user) {
         authenticate(user.getUsername(), user.getPassword());
 
         User loginUser = userService.findUserByUsername(user.getUsername());
 
-        // Check if user has completed profile registration (phase 2)
-        if (!loginUser.isProfileCompleted()) {
-            throw new ProfileIncompleteException("Please complete your profile registration before logging in.");
-        }
-
         // Check if account was soft deleted
         if (loginUser.getSoftDeletedAt() != null) {
             throw new UserNotFoundException("Your account has expired. Please register again.");
+        }
+
+        // Check if user has completed profile registration (phase 2)
+        if (!loginUser.isProfileCompleted()) {
+            // Return structured error response with profileCompleted status
+            Map<String, Object> errorResponse = Map.of(
+                "message", "Please complete your profile registration before logging in.",
+                "profileCompleted", false,
+                "username", loginUser.getUsername()
+            );
+            return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
         }
 
         UserPrincipal userPrincipal = new UserPrincipal(loginUser);

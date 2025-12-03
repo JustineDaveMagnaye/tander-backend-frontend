@@ -87,7 +87,28 @@ export default function LoginScreen() {
                   Alert.alert("Success", "Login successful!");
                   NavigationService.replace("LoginSuccessScreen");
                 } catch (error: any) {
-                  Alert.alert("Login Failed", error.message || "Please check your credentials and try again.");
+                  // Check if error is due to incomplete profile
+                  if (error.profileIncomplete) {
+                    Alert.alert(
+                      "Profile Incomplete",
+                      "You need to complete your profile before logging in. Let's finish your registration!",
+                      [
+                        {
+                          text: "Complete Profile",
+                          onPress: () => {
+                            // Navigate to Step1BasicInfo to complete Phase 2
+                            NavigationService.navigate("Auth", { screen: "Register" });
+                          },
+                        },
+                        {
+                          text: "Cancel",
+                          style: "cancel",
+                        },
+                      ]
+                    );
+                  } else {
+                    Alert.alert("Login Failed", error.message || "Please check your credentials and try again.");
+                  }
                   console.error("Login error:", error);
                 } finally {
                   setIsLoading(false);
