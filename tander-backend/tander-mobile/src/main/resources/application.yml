@@ -33,7 +33,10 @@ logging:
     name: build/log/${spring.application.name}.log
 
 jwt:
-  secret: "thebigbrownfoxjumpsoverthelazydog"
+  # SECURITY: Use environment variable in production: ${JWT_SECRET}
+  # This is a 512-bit cryptographically secure random key (base64 encoded)
+  # To use env var: secret: ${JWT_SECRET:default_key_for_dev_only}
+  secret: "giOOUrsRQEu7NLAWQz0WVdDm4wuRKsLX6xCUb5Qp1cnraISzIvjPlb6ZPccQ553wFD5nu6A3VMWoX0XgItTlBg=="
 
 # File upload configuration
 file:
