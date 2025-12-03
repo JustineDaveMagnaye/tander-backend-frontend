@@ -76,10 +76,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyId = async (username: string) => {
+  const verifyId = async (username: string, idPhotoFrontUri: string, idPhotoBackUri?: string) => {
     try {
       console.log('🟡 [AuthProvider.verifyId] Verifying ID for:', username);
-      await authApi.verifyId(username);
+      console.log('🟡 [AuthProvider.verifyId] Front URI:', idPhotoFrontUri);
+      if (idPhotoBackUri) {
+        console.log('🟡 [AuthProvider.verifyId] Back URI:', idPhotoBackUri);
+      }
+      await authApi.verifyId(username, idPhotoFrontUri, idPhotoBackUri);
       console.log('✅ [AuthProvider.verifyId] Success');
     } catch (error) {
       console.error('🔴 [AuthProvider.verifyId] Error:', error);

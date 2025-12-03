@@ -82,9 +82,23 @@ export default function Step2IdVerification({ navigation }: Props) {
       });
 
       console.log("🟡 [Step2IdVerification] Calling verifyId...");
+      console.log("🟡 [Step2IdVerification] ID Photos:", idPhotos);
 
-      // Call verifyId API
-      await verifyId(phase1Data.username);
+      // Get photo URIs (assuming PhotoUploadSection returns local file URIs or base64)
+      const idPhotoFrontUri = idPhotos[0];
+      const idPhotoBackUri = idPhotos[1] || undefined;
+
+      if (!idPhotoFrontUri) {
+        throw new Error("Front ID photo is required");
+      }
+
+      console.log("🟡 [Step2IdVerification] Front URI:", idPhotoFrontUri);
+      if (idPhotoBackUri) {
+        console.log("🟡 [Step2IdVerification] Back URI:", idPhotoBackUri);
+      }
+
+      // Call verifyId API with photo URIs
+      await verifyId(phase1Data.username, idPhotoFrontUri, idPhotoBackUri);
 
       console.log("✅ [Step2IdVerification] ID verified successfully!");
 
