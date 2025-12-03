@@ -111,15 +111,47 @@ export const authApi = {
     }
   },
 
-  verifyId: async (username: string): Promise<string> => {
+  verifyId: async (username: string, idPhotoFrontUri: string, idPhotoBackUri?: string): Promise<string> => {
     try {
       console.log(`🟡 [authApi.verifyId] Verifying ID for username: ${username}`);
-      const response = await apiClient.post(`/user/verify-id?username=${username}`);
+      console.log(`🟡 [authApi.verifyId] Front photo URI: ${idPhotoFrontUri}`);
+      if (idPhotoBackUri) {
+        console.log(`🟡 [authApi.verifyId] Back photo URI: ${idPhotoBackUri}`);
+      }
+
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append('username', username);
+
+      // Add front photo
+      formData.append('idPhotoFront', {
+        uri: idPhotoFrontUri,
+        type: 'image/jpeg',
+        name: 'id-front.jpg',
+      } as any);
+
+      // Add back photo if provided
+      if (idPhotoBackUri) {
+        formData.append('idPhotoBack', {
+          uri: idPhotoBackUri,
+          type: 'image/jpeg',
+          name: 'id-back.jpg',
+        } as any);
+      }
+
+      console.log('🟡 [authApi.verifyId] Sending multipart form data...');
+
+      const response = await apiClient.post('/user/verify-id', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
       console.log('✅ [authApi.verifyId] Success:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('🔴 [authApi.verifyId] Error:', error.response?.data);
-      throw new Error(error.response?.data?.message || 'ID verification failed');
+      throw new Error(error.response?.data?.message || error.message || 'ID verification failed');
     }
   },
 

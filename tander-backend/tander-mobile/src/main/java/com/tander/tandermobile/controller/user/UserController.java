@@ -96,16 +96,25 @@ public class UserController {
     }
 
     /**
-     * Phase 3 Registration: Verifies user ID.
+     * Phase 3 Registration: Automated ID verification using OCR.
+     * Extracts birthdate from ID photos, calculates age, and auto-approves if age >= 60.
      *
      * @param username the username of the user to verify
-     * @return success message indicating phase 3 completion
-     * @throws UserNotFoundException if user is not found
+     * @param idPhotoFront front photo of government-issued ID (required)
+     * @param idPhotoBack back photo of ID (optional)
+     * @return verification result message
      */
-    @PostMapping("/verify-id")
-    public ResponseEntity<String> verifyId(@RequestParam String username) throws UserNotFoundException {
-        User user = userService.verifyId(username);
-        return new ResponseEntity<>("ID verification completed successfully. You can now login.", null, HttpStatus.OK);
+    @PostMapping(value = "/verify-id", consumes = "multipart/form-data")
+    public ResponseEntity<String> verifyId(
+            @RequestParam String username,
+            @RequestParam("idPhotoFront") org.springframework.web.multipart.MultipartFile idPhotoFront,
+            @RequestParam(value = "idPhotoBack", required = false) org.springframework.web.multipart.MultipartFile idPhotoBack) {
+        try {
+            String result = userService.verifyId(username, idPhotoFront, idPhotoBack);
+            return new ResponseEntity<>(result, null, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), null, HttpStatus.BAD_REQUEST);
+        }
     }
 
     /**

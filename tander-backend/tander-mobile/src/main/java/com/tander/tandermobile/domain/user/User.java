@@ -46,11 +46,58 @@ public class User implements Serializable {
     /**
      * Indicates if the user has completed ID verification (phase 3).
      * false = ID verification not yet completed
-     * true = ID verification completed
+     * true = ID verification completed (auto-approved by OCR)
      * null = legacy records or uninitialized state (treated as false)
      */
     @Column(name = "id_verified", nullable = true)
     private Boolean idVerified = false;
+
+    /**
+     * ID verification status from automated OCR processing.
+     * PENDING = Not yet processed
+     * PROCESSING = Currently being processed
+     * APPROVED = Age >= 60, auto-approved
+     * REJECTED = Age < 60, auto-rejected
+     * FAILED = OCR extraction failed
+     */
+    @Column(name = "id_verification_status")
+    private String idVerificationStatus = "PENDING";
+
+    /**
+     * Birthdate extracted from ID via OCR
+     */
+    @Column(name = "extracted_birthdate")
+    private Date extractedBirthdate;
+
+    /**
+     * Age calculated from extracted birthdate
+     */
+    @Column(name = "extracted_age")
+    private Integer extractedAge;
+
+    /**
+     * URL/path to front photo of ID
+     */
+    @Column(name = "id_photo_front_url")
+    private String idPhotoFrontUrl;
+
+    /**
+     * URL/path to back photo of ID
+     */
+    @Column(name = "id_photo_back_url")
+    private String idPhotoBackUrl;
+
+    /**
+     * Reason for verification failure (if applicable)
+     */
+    @Column(name = "verification_failure_reason", length = 500)
+    private String verificationFailureReason;
+
+    /**
+     * Timestamp when ID was verified (approved or rejected)
+     */
+    @Column(name = "verified_at")
+    private Date verifiedAt;
 
     /**
      * Timestamp for soft delete mechanism.
