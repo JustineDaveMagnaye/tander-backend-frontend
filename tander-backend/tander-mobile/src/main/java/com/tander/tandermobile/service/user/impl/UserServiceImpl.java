@@ -163,8 +163,30 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 throw new UserNotFoundException("User account has expired. Please register again.");
             }
 
-            // Set profile information
-            user.setProfile(profile);
+            // Check if user already has a profile
+            Profile existingProfile = user.getProfile();
+            if (existingProfile != null) {
+                // Update existing profile fields
+                LOGGER.info("Updating existing profile (ID: {}) for user: {}", existingProfile.getId(), username);
+                existingProfile.setFirstName(profile.getFirstName());
+                existingProfile.setLastName(profile.getLastName());
+                existingProfile.setMiddleName(profile.getMiddleName());
+                existingProfile.setNickName(profile.getNickName());
+                existingProfile.setAddress(profile.getAddress());
+                existingProfile.setPhone(profile.getPhone());
+                existingProfile.setEmail(profile.getEmail());
+                existingProfile.setBirthDate(profile.getBirthDate());
+                existingProfile.setAge(profile.getAge());
+                existingProfile.setCountry(profile.getCountry());
+                existingProfile.setCity(profile.getCity());
+                existingProfile.setCivilStatus(profile.getCivilStatus());
+                existingProfile.setHobby(profile.getHobby());
+            } else {
+                // Create new profile and link it to the user
+                LOGGER.info("Creating new profile for user: {}", username);
+                user.setProfile(profile);
+            }
+
             user.setProfileCompleted(markAsComplete);
 
             User updatedUser = userRepository.save(user);
