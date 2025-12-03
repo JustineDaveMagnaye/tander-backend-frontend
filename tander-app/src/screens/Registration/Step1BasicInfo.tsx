@@ -54,6 +54,20 @@ export default function Step1BasicInfo({ navigation }: Props) {
   // Loading state
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // Debug: Log email value and phase1Data on mount and when they change
+  React.useEffect(() => {
+    console.log("🔍 [Step1BasicInfo] phase1Data:", phase1Data);
+    console.log("🔍 [Step1BasicInfo] values.email:", values.email);
+  }, [phase1Data, values.email]);
+
+  // Sync email from phase1Data if it's not already set
+  React.useEffect(() => {
+    if (phase1Data?.email && values.email !== phase1Data.email) {
+      console.log("🔄 [Step1BasicInfo] Syncing email from phase1Data:", phase1Data.email);
+      setFieldValue('email', phase1Data.email);
+    }
+  }, [phase1Data]);
+
   // Animations
   const headerAnim = useSlideUp(500, 0, 30);
   const cardAnim = useSlideUp(600, 100, 40);
@@ -131,7 +145,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
   const handleNext = async () => {
     try {
       // First, mark all fields as touched so errors show
-      setTouched({
+      const step1Fields = {
         firstName: true,
         lastName: true,
         nickName: true,
@@ -141,14 +155,28 @@ export default function Step1BasicInfo({ navigation }: Props) {
         civilStatus: true,
         city: true,
         hobby: true,
-      });
+      };
+      setTouched(step1Fields);
 
-      // Validate form
+      // Validate only Step 1 fields (not the entire form)
       const validationErrors = await validateForm();
-      console.log("🔥 [Step1BasicInfo] Validation errors:", validationErrors);
+      console.log("🔥 [Step1BasicInfo] All validation errors:", validationErrors);
 
-      if (Object.keys(validationErrors).length > 0) {
-        toast.error("Please fill in all required fields correctly");
+      // Filter to only Step1 relevant errors
+      const step1ErrorKeys = Object.keys(step1Fields);
+      const step1Errors = Object.keys(validationErrors).filter(key => step1ErrorKeys.includes(key));
+
+      console.log("🔥 [Step1BasicInfo] Step1 validation errors:", step1Errors);
+
+      if (step1Errors.length > 0) {
+        const errorMessages = step1Errors.map(key => validationErrors[key]).join(', ');
+        toast.error(`Please fix the following: ${errorMessages}`);
+        return;
+      }
+
+      // Additional check: Verify all required fields are filled
+      if (!isFormComplete) {
+        toast.error("Please fill in all required fields");
         return;
       }
 
@@ -167,6 +195,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
       });
 
       console.log("🟡 [Step1BasicInfo] Saving profile...");
+      console.log("🟡 [Step1BasicInfo] Phase1Data email:", phase1Data.email);
 
       // Prepare profile data
       const profileData = {
@@ -176,7 +205,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
         nickName: values.nickName,
         address: values.address || '',
         phone: values.phone || '',
-        email: phase1Data.email,
+        email: phase1Data.email || '',
         birthDate: convertToISODate(values.birthday),
         age: parseInt(values.age) || 0,
         country: values.country,
@@ -184,6 +213,8 @@ export default function Step1BasicInfo({ navigation }: Props) {
         civilStatus: values.civilStatus,
         hobby: values.hobby || '',
       };
+
+      console.log("🟡 [Step1BasicInfo] Profile data email field:", profileData.email);
 
       // Save profile with markAsComplete=false (partial save)
       await completeProfile(phase1Data.username, profileData, false);
@@ -320,7 +351,7 @@ export default function Step1BasicInfo({ navigation }: Props) {
             {/* EMAIL (Pre-filled from Phase 1) */}
             <TextInputField
               label="Email (from Phase 1)"
-              placeholder="Email from account creation"
+              placeholder={values.email || "No email provided"}
               value={values.email}
               touched={!!touched.email}
               error={getErrorString(errors.email)}
