@@ -39,9 +39,10 @@ public class SecurityConstant {
     public static final String[] PUBLIC_URLS = {
             "/user/login",
             "/user/register",
-            "/user/verify-otp",
+            "/user/complete-profile",
             "/user/forgot-password",
             "/user/forgot-username",
+            "user/verify-id",
             "/user/verify-otp-forgot-username",
             "/user/verify-forgot-password",
             "Guest/addGuest",

@@ -1,5 +1,5 @@
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { Platform } from 'react-native';
 
 // Platform-specific API URL configuration
@@ -9,12 +9,12 @@ import { Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:8080'; // Android emulator
+      return 'https://15b388cffe49.ngrok-free.app'; // Android emulator
     }
-    return 'http://localhost:8080'; // iOS simulator or web
+    return 'https://15b388cffe49.ngrok-free.app'; // iOS simulator or web
   }
   // Production URL - update this for production deployment
-  return 'http://localhost:8080';
+  return 'https://15b388cffe49.ngrok-free.app';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

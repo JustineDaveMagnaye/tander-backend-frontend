@@ -12,9 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,10 +29,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Implementation of ID verification service using Tesseract OCR.
- * Fully automated, 100% free solution for age verification from Philippine IDs.
- */
 @Service
 public class IdVerificationServiceImpl implements IdVerificationService {
 
@@ -46,327 +42,171 @@ public class IdVerificationServiceImpl implements IdVerificationService {
     @Value("${file.upload.id-verification-path}")
     private String uploadPath;
 
-    private final Tesseract tesseract;
+    @Value("${tesseract.datapath}")
+    private String tessDataPath;
 
-    public IdVerificationServiceImpl() {
-        // Initialize Tesseract OCR
+    @Value("${tesseract.language:eng}")
+    private String tessLanguage;
+
+    private Tesseract tesseract;
+
+    @PostConstruct
+    public void init() {
         tesseract = new Tesseract();
-        // Set data path for Tesseract (default: tessdata folder in project root)
-        // Download eng.traineddata from: https://github.com/tesseract-ocr/tessdata
-        tesseract.setDatapath("/usr/share/tesseract-ocr/4.00/tessdata");
-        tesseract.setLanguage("eng");
-        tesseract.setPageSegMode(1); // Automatic page segmentation with OSD
-        tesseract.setOcrEngineMode(1); // Neural nets LSTM engine only
+        tesseract.setDatapath(tessDataPath);
+        tesseract.setLanguage(tessLanguage);
+        tesseract.setPageSegMode(1); // Automatic page segmentation
+        tesseract.setOcrEngineMode(1); // LSTM only
+        LOGGER.info("Tesseract initialized with datapath: {}", tessDataPath);
     }
 
     @Override
     public String verifyUserAge(User user, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception {
         try {
-            LOGGER.info("🔍 Starting automated ID verification for user: {}", user.getUsername());
+            LOGGER.info("🔍 Verifying age for user: {}", user.getUsername());
 
-            // Update status to PROCESSING
-            user.setIdVerificationStatus("PROCESSING");
-            userRepository.save(user);
-
-            // Save ID photo to D:/ drive (front only, back is optional/deprecated)
+            // Save front photo
             String frontPhotoPath = saveIdPhoto(idPhotoFront, user.getUsername(), "front");
-
-            // Store file path in user entity
             user.setIdPhotoFrontUrl(frontPhotoPath);
             userRepository.save(user);
+            LOGGER.info("💾 Saved front photo to {}", frontPhotoPath);
 
-            LOGGER.info("📸 ID photo saved - Front: {}", frontPhotoPath);
-
-            // Check image quality before OCR processing
-            LOGGER.info("🔍 Checking photo quality...");
-            boolean isFrontQualityOk = isImageQualityAcceptable(idPhotoFront);
-
-            if (!isFrontQualityOk) {
-                // Photo is too blurry
-                LOGGER.error("❌ ID photo is too blurry");
+            // Check image quality
+            if (!isImageQualityAcceptable(idPhotoFront)) {
                 user.setIdVerificationStatus("FAILED");
-                user.setVerificationFailureReason("ID photo is too blurry. Please ensure the photo is clear, well-lit, and not blurry.");
                 user.setIdVerified(false);
-                user.setVerifiedAt(new Date());
+                user.setVerificationFailureReason("ID photo too blurry");
                 userRepository.save(user);
-                throw new Exception("ID photo is too blurry. Please retake a clear, non-blurry photo of the front of your ID.");
+                throw new Exception("ID photo too blurry");
             }
 
-            LOGGER.info("✅ Image quality check passed");
-
-            // Extract text from front photo
+            // Extract text
             String extractedText = extractTextFromImage(idPhotoFront);
-            LOGGER.info("📄 Extracted text from ID: {}", extractedText);
+            LOGGER.info("📄 Extracted text: {}", extractedText);
 
-            if (extractedText.isEmpty()) {
-                LOGGER.error("❌ No text extracted from ID photo");
-                user.setIdVerificationStatus("FAILED");
-                user.setVerificationFailureReason("Unable to extract text from ID. Please ensure the photo is clear and well-lit.");
-                user.setIdVerified(false);
-                user.setVerifiedAt(new Date());
-                userRepository.save(user);
-                throw new Exception("Unable to extract text from ID photo. Please ensure it's clear and all text is visible.");
-            }
-
-            // Parse birthdate from extracted text
+            // Parse birthdate
             Date birthdate = parseBirthdate(extractedText);
-
             if (birthdate == null) {
-                LOGGER.error("❌ No birthdate found in extracted text");
                 user.setIdVerificationStatus("FAILED");
-                user.setVerificationFailureReason("Could not find birthdate in ID. Please ensure the birthdate is clearly visible.");
                 user.setIdVerified(false);
-                user.setVerifiedAt(new Date());
+                user.setVerificationFailureReason("Birthdate extraction failed");
                 userRepository.save(user);
-                throw new Exception("Could not extract birthdate from ID");
+                throw new Exception("Birthdate extraction failed");
             }
 
             // Calculate age
             int age = calculateAge(birthdate);
-            LOGGER.info("📅 Extracted birthdate: {}, Calculated age: {}", birthdate, age);
+            LOGGER.info("📅 Calculated age: {}", age);
 
-            // Store extracted data
+            // Save to user
             user.setExtractedBirthdate(birthdate);
             user.setExtractedAge(age);
             user.setVerifiedAt(new Date());
 
-            // Auto-approve or auto-reject based on age
+            // Check minimum age
             if (age >= MINIMUM_AGE) {
-                LOGGER.info("✅ AUTO-APPROVED: Age {} is >= {} years", age, MINIMUM_AGE);
                 user.setIdVerificationStatus("APPROVED");
                 user.setIdVerified(true);
                 user.setVerificationFailureReason(null);
                 userRepository.save(user);
-                return String.format("ID verification successful! Age: %d years (verified)", age);
+                return String.format("✅ Age verification passed. Age: %d", age);
             } else {
-                LOGGER.info("❌ AUTO-REJECTED: Age {} is < {} years", age, MINIMUM_AGE);
                 user.setIdVerificationStatus("REJECTED");
                 user.setIdVerified(false);
-                user.setVerificationFailureReason(String.format("Age requirement not met. Minimum age: %d years, Your age: %d years", MINIMUM_AGE, age));
+                user.setVerificationFailureReason(
+                        String.format("Age requirement not met. Minimum: %d, Your age: %d", MINIMUM_AGE, age));
                 userRepository.save(user);
-                throw new Exception(String.format("Age requirement not met. You must be at least %d years old.", MINIMUM_AGE));
+                throw new Exception(String.format("❌ Age requirement not met. You must be at least %d years old.", MINIMUM_AGE));
             }
 
         } catch (Exception e) {
-            LOGGER.error("🔴 ID verification error: {}", e.getMessage());
+            LOGGER.error("🔴 Verification error: {}", e.getMessage());
             throw e;
         }
     }
 
     @Override
     public String extractTextFromImage(MultipartFile idPhoto) throws Exception {
+        BufferedImage image = ImageIO.read(idPhoto.getInputStream());
+        if (image == null) throw new Exception("Invalid image file");
         try {
-            // Convert MultipartFile to BufferedImage
-            BufferedImage image = ImageIO.read(idPhoto.getInputStream());
-
-            if (image == null) {
-                throw new Exception("Invalid image file");
-            }
-
-            // Run OCR
-            String text = tesseract.doOCR(image);
-
-            return text != null ? text : "";
-
+            return tesseract.doOCR(image);
         } catch (TesseractException e) {
-            LOGGER.error("Tesseract OCR error: {}", e.getMessage());
-            throw new Exception("OCR processing failed: " + e.getMessage());
+            throw new Exception("OCR failed: " + e.getMessage());
         }
     }
 
     @Override
-    public Date parseBirthdate(String extractedText) {
-        if (extractedText == null || extractedText.isEmpty()) {
-            return null;
+    public Date parseBirthdate(String text) {
+        if (text == null) return null;
+
+        // Pattern: YYYY/MM/DD or YYYY-MM-DD
+        Pattern pattern = Pattern.compile("\\b(19|20)\\d{2}[/-](0?[1-9]|1[0-2])[/-](0?[1-9]|[12][0-9]|3[01])\\b");
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            String dateStr = matcher.group();
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(dateStr.contains("/") ? "yyyy/MM/dd" : "yyyy-MM-dd");
+                sdf.setLenient(false);
+                return sdf.parse(dateStr);
+            } catch (ParseException ignored) {}
         }
-
-        // Common patterns for Philippine IDs
-        // Pattern 1: MM/DD/YYYY (e.g., 01/15/1960, 12/31/1963)
-        // Pattern 2: DD/MM/YYYY (e.g., 15/01/1960)
-        // Pattern 3: YYYY-MM-DD (e.g., 1960-01-15)
-        // Pattern 4: Month DD, YYYY (e.g., January 15, 1960)
-
-        String[] datePatterns = {
-                "MM/dd/yyyy",
-                "dd/MM/yyyy",
-                "yyyy-MM-dd",
-                "MMMM dd, yyyy",
-                "MMM dd, yyyy"
-        };
-
-        // Regex patterns to find dates in text
-        String[] regexPatterns = {
-                "\\b(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(19[0-9]{2}|20[0-2][0-9])\\b", // MM/DD/YYYY
-                "\\b(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/(19[0-9]{2}|20[0-2][0-9])\\b", // DD/MM/YYYY
-                "\\b(19[0-9]{2}|20[0-2][0-9])-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])\\b"  // YYYY-MM-DD
-        };
-
-        // Look for keywords like "BIRTHDATE", "DATE OF BIRTH", "DOB", "BORN"
-        String normalizedText = extractedText.toUpperCase();
-
-        for (int i = 0; i < regexPatterns.length; i++) {
-            Pattern pattern = Pattern.compile(regexPatterns[i]);
-            Matcher matcher = pattern.matcher(extractedText);
-
-            while (matcher.find()) {
-                String dateStr = matcher.group();
-                try {
-                    SimpleDateFormat sdf = new SimpleDateFormat(datePatterns[i]);
-                    sdf.setLenient(false);
-                    Date parsedDate = sdf.parse(dateStr);
-
-                    // Validate that the date is reasonable (between 1900 and current year)
-                    LocalDate localDate = parsedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                    int year = localDate.getYear();
-
-                    if (year >= 1900 && year <= LocalDate.now().getYear()) {
-                        LOGGER.info("✅ Found valid birthdate: {} (parsed from: {})", parsedDate, dateStr);
-                        return parsedDate;
-                    }
-
-                } catch (ParseException e) {
-                    // Continue to next pattern
-                    LOGGER.debug("Failed to parse date with pattern {}: {}", datePatterns[i], dateStr);
-                }
-            }
-        }
-
-        LOGGER.warn("⚠️ No valid birthdate found in extracted text");
         return null;
     }
 
     @Override
     public int calculateAge(Date birthdate) {
-        if (birthdate == null) {
-            return 0;
-        }
-
-        LocalDate birthLocalDate = birthdate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        LocalDate currentDate = LocalDate.now();
-
-        return Period.between(birthLocalDate, currentDate).getYears();
+        LocalDate birthLocal = birthdate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return Period.between(birthLocal, LocalDate.now()).getYears();
     }
 
     @Override
     public boolean isImageQualityAcceptable(MultipartFile idPhoto) throws Exception {
-        try {
-            BufferedImage image = ImageIO.read(idPhoto.getInputStream());
-
-            if (image == null) {
-                throw new Exception("Invalid image file");
-            }
-
-            // Calculate blur using Laplacian variance
-            double variance = calculateLaplacianVariance(image);
-
-            LOGGER.info("📊 Image blur score (Laplacian variance): {}", variance);
-
-            boolean isAcceptable = variance >= BLUR_THRESHOLD;
-
-            if (!isAcceptable) {
-                LOGGER.warn("⚠️ Image quality too low (variance: {}, threshold: {})", variance, BLUR_THRESHOLD);
-            } else {
-                LOGGER.info("✅ Image quality acceptable (variance: {})", variance);
-            }
-
-            return isAcceptable;
-
-        } catch (IOException e) {
-            LOGGER.error("Error reading image for quality check: {}", e.getMessage());
-            throw new Exception("Failed to check image quality: " + e.getMessage());
-        }
+        BufferedImage image = ImageIO.read(idPhoto.getInputStream());
+        if (image == null) throw new Exception("Invalid image file");
+        return calculateLaplacianVariance(image) >= BLUR_THRESHOLD;
     }
 
-    /**
-     * Calculates Laplacian variance to detect blur.
-     * Higher variance = sharper image, Lower variance = blurry image
-     *
-     * @param image the buffered image to analyze
-     * @return the Laplacian variance score
-     */
     private double calculateLaplacianVariance(BufferedImage image) {
-        // Convert to grayscale
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        int[][] gray = new int[height][width];
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+        int w = image.getWidth(), h = image.getHeight();
+        int[][] gray = new int[h][w];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
                 int rgb = image.getRGB(x, y);
-                int r = (rgb >> 16) & 0xFF;
-                int g = (rgb >> 8) & 0xFF;
-                int b = rgb & 0xFF;
-                // Grayscale conversion
-                gray[y][x] = (r + g + b) / 3;
+                gray[y][x] = ((rgb >> 16) & 0xFF + (rgb >> 8) & 0xFF + rgb & 0xFF) / 3;
             }
         }
 
-        // Apply Laplacian kernel
-        // Kernel: [[0, 1, 0], [1, -4, 1], [0, 1, 0]]
-        double sum = 0.0;
-        double sumSquared = 0.0;
+        double sum = 0, sumSq = 0;
         int count = 0;
-
-        for (int y = 1; y < height - 1; y++) {
-            for (int x = 1; x < width - 1; x++) {
-                int laplacian =
-                    gray[y-1][x] +      // top
-                    gray[y+1][x] +      // bottom
-                    gray[y][x-1] +      // left
-                    gray[y][x+1] -      // right
-                    (4 * gray[y][x]);   // center
-
-                sum += laplacian;
-                sumSquared += laplacian * laplacian;
+        for (int y = 1; y < h - 1; y++) {
+            for (int x = 1; x < w - 1; x++) {
+                int lap = gray[y-1][x] + gray[y+1][x] + gray[y][x-1] + gray[y][x+1] - 4*gray[y][x];
+                sum += lap;
+                sumSq += lap*lap;
                 count++;
             }
         }
-
-        // Calculate variance
         double mean = sum / count;
-        double variance = (sumSquared / count) - (mean * mean);
-
-        return variance;
+        return (sumSq / count) - (mean * mean);
     }
 
-    /**
-     * Saves uploaded ID photo to D:/ drive.
-     *
-     * @param file the multipart file to save
-     * @param username the username (for organizing files)
-     * @param photoType "front" or "back"
-     * @return the saved file path
-     * @throws IOException if file save fails
-     */
-    private String saveIdPhoto(MultipartFile file, String username, String photoType) throws IOException {
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
+    private String saveIdPhoto(MultipartFile file, String username, String type) throws IOException {
+        if (file == null || file.isEmpty()) return null;
 
-        // Create upload directory if it doesn't exist
-        Path uploadDir = Paths.get(uploadPath);
-        if (!Files.exists(uploadDir)) {
-            Files.createDirectories(uploadDir);
-            LOGGER.info("📁 Created upload directory: {}", uploadDir.toAbsolutePath());
-        }
+        Path dir = Paths.get(uploadPath);
+        if (!Files.exists(dir)) Files.createDirectories(dir);
 
-        // Generate unique filename: username_photoType_timestamp_uuid.extension
-        String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+        String ext = file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")
+                ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."))
                 : ".jpg";
 
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-        String filename = String.format("%s_%s_%s_%s%s", username, photoType, timestamp, uniqueId, extension);
+        String filename = String.format("%s_%s_%s_%s%s",
+                username, type, new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()),
+                UUID.randomUUID().toString().substring(0, 8), ext);
 
-        // Save file to disk
-        Path filePath = uploadDir.resolve(filename);
-        Files.copy(file.getInputStream(), filePath);
-
-        LOGGER.info("💾 Saved {} ID photo to: {}", photoType, filePath.toAbsolutePath());
-
-        return filePath.toString();
+        Path path = dir.resolve(filename);
+        Files.copy(file.getInputStream(), path);
+        return path.toString();
     }
 }

@@ -190,6 +190,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             } else {
                 // Create new profile and link it to the user
                 LOGGER.info("Creating new profile for user: {}", username);
+                user.setProfileCompleted(true);
                 user.setProfile(profile);
             }
 
