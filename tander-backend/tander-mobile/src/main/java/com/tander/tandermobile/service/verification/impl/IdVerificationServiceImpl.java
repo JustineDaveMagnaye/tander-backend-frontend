@@ -38,6 +38,7 @@ public class IdVerificationServiceImpl implements IdVerificationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IdVerificationServiceImpl.class);
     private static final int MINIMUM_AGE = 60;
+    private static final double BLUR_THRESHOLD = 100.0; // Laplacian variance threshold
 
     @Autowired
     private UserRepository userRepository;
@@ -77,6 +78,40 @@ public class IdVerificationServiceImpl implements IdVerificationService {
             userRepository.save(user);
 
             LOGGER.info("📸 ID photos saved - Front: {}, Back: {}", frontPhotoPath, backPhotoPath);
+
+            // Check image quality before OCR processing
+            LOGGER.info("🔍 Checking front photo quality...");
+            boolean isFrontQualityOk = isImageQualityAcceptable(idPhotoFront);
+
+            if (!isFrontQualityOk) {
+                // If front is blurry, check if back photo is available and clear
+                if (idPhotoBack != null && !idPhotoBack.isEmpty()) {
+                    LOGGER.info("🔍 Front photo blurry, checking back photo quality...");
+                    boolean isBackQualityOk = isImageQualityAcceptable(idPhotoBack);
+
+                    if (!isBackQualityOk) {
+                        // Both photos are blurry
+                        LOGGER.error("❌ Both ID photos are too blurry");
+                        user.setIdVerificationStatus("FAILED");
+                        user.setVerificationFailureReason("Image quality too low. Please ensure photos are clear, well-lit, and not blurry.");
+                        user.setIdVerified(false);
+                        user.setVerifiedAt(new Date());
+                        userRepository.save(user);
+                        throw new Exception("Image quality too low. Please retake clear, non-blurry photos of your ID.");
+                    }
+                } else {
+                    // Only front photo provided and it's blurry
+                    LOGGER.error("❌ Front ID photo is too blurry");
+                    user.setIdVerificationStatus("FAILED");
+                    user.setVerificationFailureReason("Front ID photo is too blurry. Please ensure the photo is clear and well-lit.");
+                    user.setIdVerified(false);
+                    user.setVerifiedAt(new Date());
+                    userRepository.save(user);
+                    throw new Exception("Front ID photo is too blurry. Please retake a clear, non-blurry photo.");
+                }
+            }
+
+            LOGGER.info("✅ Image quality check passed");
 
             // Extract text from front photo (primary)
             String extractedText = extractTextFromImage(idPhotoFront);
@@ -235,6 +270,89 @@ public class IdVerificationServiceImpl implements IdVerificationService {
         LocalDate currentDate = LocalDate.now();
 
         return Period.between(birthLocalDate, currentDate).getYears();
+    }
+
+    @Override
+    public boolean isImageQualityAcceptable(MultipartFile idPhoto) throws Exception {
+        try {
+            BufferedImage image = ImageIO.read(idPhoto.getInputStream());
+
+            if (image == null) {
+                throw new Exception("Invalid image file");
+            }
+
+            // Calculate blur using Laplacian variance
+            double variance = calculateLaplacianVariance(image);
+
+            LOGGER.info("📊 Image blur score (Laplacian variance): {}", variance);
+
+            boolean isAcceptable = variance >= BLUR_THRESHOLD;
+
+            if (!isAcceptable) {
+                LOGGER.warn("⚠️ Image quality too low (variance: {}, threshold: {})", variance, BLUR_THRESHOLD);
+            } else {
+                LOGGER.info("✅ Image quality acceptable (variance: {})", variance);
+            }
+
+            return isAcceptable;
+
+        } catch (IOException e) {
+            LOGGER.error("Error reading image for quality check: {}", e.getMessage());
+            throw new Exception("Failed to check image quality: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Calculates Laplacian variance to detect blur.
+     * Higher variance = sharper image, Lower variance = blurry image
+     *
+     * @param image the buffered image to analyze
+     * @return the Laplacian variance score
+     */
+    private double calculateLaplacianVariance(BufferedImage image) {
+        // Convert to grayscale
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        int[][] gray = new int[height][width];
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = image.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                // Grayscale conversion
+                gray[y][x] = (r + g + b) / 3;
+            }
+        }
+
+        // Apply Laplacian kernel
+        // Kernel: [[0, 1, 0], [1, -4, 1], [0, 1, 0]]
+        double sum = 0.0;
+        double sumSquared = 0.0;
+        int count = 0;
+
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int laplacian =
+                    gray[y-1][x] +      // top
+                    gray[y+1][x] +      // bottom
+                    gray[y][x-1] +      // left
+                    gray[y][x+1] -      // right
+                    (4 * gray[y][x]);   // center
+
+                sum += laplacian;
+                sumSquared += laplacian * laplacian;
+                count++;
+            }
+        }
+
+        // Calculate variance
+        double mean = sum / count;
+        double variance = (sumSquared / count) - (mean * mean);
+
+        return variance;
     }
 
     /**

@@ -45,4 +45,14 @@ public interface IdVerificationService {
      * @return calculated age in years
      */
     int calculateAge(java.util.Date birthdate);
+
+    /**
+     * Checks if an image is too blurry for OCR processing.
+     * Uses Laplacian variance method to detect blur.
+     *
+     * @param idPhoto the ID image file to check
+     * @return true if image quality is acceptable, false if too blurry
+     * @throws Exception if image processing fails
+     */
+    boolean isImageQualityAcceptable(MultipartFile idPhoto) throws Exception;
 }
