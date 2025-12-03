@@ -79,13 +79,20 @@ public class UserController {
      *
      * @param username the username of the user
      * @param profile the profile information
+     * @param markAsComplete whether to mark profile as complete (default: true)
      * @return success message indicating phase 2 completion
      * @throws UserNotFoundException if user is not found
      */
     @PostMapping("/complete-profile")
-    public ResponseEntity<String> completeProfile(@RequestParam String username, @RequestBody Profile profile) throws UserNotFoundException {
-        User user = userService.completeProfile(username, profile);
-        return new ResponseEntity<>("Profile completed successfully. You can now login.", null, HttpStatus.OK);
+    public ResponseEntity<String> completeProfile(
+            @RequestParam String username,
+            @RequestBody Profile profile,
+            @RequestParam(defaultValue = "true") boolean markAsComplete) throws UserNotFoundException {
+        User user = userService.completeProfile(username, profile, markAsComplete);
+        String message = markAsComplete
+            ? "Profile completed successfully. You can now login."
+            : "Profile saved successfully.";
+        return new ResponseEntity<>(message, null, HttpStatus.OK);
     }
 
     /**

@@ -150,7 +150,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User completeProfile(String username, Profile profile) throws UserNotFoundException {
+    public User completeProfile(String username, Profile profile, boolean markAsComplete) throws UserNotFoundException {
         try {
             User user = findUserByUsername(username);
             if (user == null) {
@@ -165,18 +165,27 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             // Set profile information
             user.setProfile(profile);
-            user.setProfileCompleted(true);
+            user.setProfileCompleted(markAsComplete);
 
             User updatedUser = userRepository.save(user);
-            LOGGER.info("Phase 2 registration completed for user: {}", username);
 
-            // Log successful profile completion
+            String action = markAsComplete ? "completed" : "updated";
+            LOGGER.info("Profile {} for user: {}", action, username);
+
+            // Log successful profile completion or update
+            AuditEventType eventType = markAsComplete
+                ? AuditEventType.REGISTRATION_PHASE2_SUCCESS
+                : AuditEventType.PROFILE_UPDATE_SUCCESS;
+            String description = markAsComplete
+                ? "Phase 2 registration (profile completion) completed successfully"
+                : "Profile information updated (partial save)";
+
             auditLogService.logEvent(
-                    AuditEventType.REGISTRATION_PHASE2_SUCCESS,
+                    eventType,
                     AuditStatus.SUCCESS,
                     updatedUser.getId(),
                     updatedUser.getUsername(),
-                    "Phase 2 registration (profile completion) completed successfully"
+                    description
             );
 
             return updatedUser;

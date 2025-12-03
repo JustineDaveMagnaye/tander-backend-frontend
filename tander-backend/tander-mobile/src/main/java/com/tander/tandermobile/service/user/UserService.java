@@ -38,8 +38,9 @@ public interface UserService {
      *
      * @param username the username of the user completing their profile
      * @param profile the profile information to be added
-     * @return the updated user with profileCompleted set to true
+     * @param markAsComplete whether to mark the profile as complete
+     * @return the updated user
      * @throws UserNotFoundException if user is not found
      */
-    User completeProfile(String username, Profile profile) throws UserNotFoundException;
+    User completeProfile(String username, Profile profile, boolean markAsComplete) throws UserNotFoundException;
 }

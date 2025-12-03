@@ -29,6 +29,9 @@ import {
   PHILIPPINES_CITIES,
 } from "../../constants/formData";
 import { useSlideUp } from "../../hooks/useFadeIn";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../context/ToastContext";
+import { ActivityIndicator } from "react-native";
 
 interface Props {
   navigation: Step1Nav;
@@ -44,6 +47,12 @@ export default function Step1BasicInfo({ navigation }: Props) {
     validateForm,
     setTouched,
   } = useFormikContext<any>();
+
+  const { completeProfile, phase1Data } = useAuth();
+  const toast = useToast();
+
+  // Loading state
+  const [isSaving, setIsSaving] = React.useState(false);
 
   // Animations
   const headerAnim = useSlideUp(500, 0, 30);
@@ -112,29 +121,89 @@ export default function Step1BasicInfo({ navigation }: Props) {
   const completion = calculateCompletion();
   const isFormComplete = completion.completed === completion.total;
 
+  // Helper function to convert MM/DD/YYYY to ISO format
+  const convertToISODate = (dateString: string): string => {
+    if (!dateString) return '';
+    const [month, day, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
   const handleNext = async () => {
-    // First, mark all fields as touched so errors show
-    setTouched({
-      firstName: true,
-      lastName: true,
-      nickName: true,
-      email: true,
-      birthday: true,
-      age: true,
-      country: true,
-      civilStatus: true,
-      city: true,
-      hobby: true,
-    });
+    try {
+      // First, mark all fields as touched so errors show
+      setTouched({
+        firstName: true,
+        lastName: true,
+        nickName: true,
+        birthday: true,
+        age: true,
+        country: true,
+        civilStatus: true,
+        city: true,
+        hobby: true,
+      });
 
-    // Then validate
-    // const validationErrors = await validateForm();
-    // console.log("🔥 validationErrors:", validationErrors);
+      // Validate form
+      const validationErrors = await validateForm();
+      console.log("🔥 [Step1BasicInfo] Validation errors:", validationErrors);
 
-    // if (Object.keys(validationErrors).length === 0) {
-    //   navigation.navigate("Step2");
-    // }
-    navigation.navigate("Step2");
+      if (Object.keys(validationErrors).length > 0) {
+        toast.error("Please fill in all required fields correctly");
+        return;
+      }
+
+      // Check if Phase 1 data exists
+      if (!phase1Data) {
+        toast.error("Phase 1 data not found. Please start registration from the beginning.");
+        return;
+      }
+
+      // Show loading toast
+      setIsSaving(true);
+      toast.showToast({
+        type: 'info',
+        message: 'Saving your profile...',
+        duration: 2000,
+      });
+
+      console.log("🟡 [Step1BasicInfo] Saving profile...");
+
+      // Prepare profile data
+      const profileData = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        middleName: values.middleName || '',
+        nickName: values.nickName,
+        address: values.address || '',
+        phone: values.phone || '',
+        email: phase1Data.email,
+        birthDate: convertToISODate(values.birthday),
+        age: parseInt(values.age) || 0,
+        country: values.country,
+        city: values.city,
+        civilStatus: values.civilStatus,
+        hobby: values.hobby || '',
+      };
+
+      // Save profile with markAsComplete=false (partial save)
+      await completeProfile(phase1Data.username, profileData, false);
+
+      console.log("✅ [Step1BasicInfo] Profile saved successfully!");
+
+      // Show success toast
+      toast.success("Profile saved successfully!");
+
+      // Navigate to Step2
+      setTimeout(() => {
+        navigation.navigate("Step2");
+      }, 500);
+
+    } catch (error: any) {
+      console.error("🔴 [Step1BasicInfo] Save error:", error);
+      toast.error(error.message || "Failed to save profile. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -359,21 +428,31 @@ export default function Step1BasicInfo({ navigation }: Props) {
           <TouchableOpacity
             style={[
               styles.nextButton,
-              !isFormComplete && styles.nextButtonMuted,
+              (!isFormComplete || isSaving) && styles.nextButtonMuted,
             ]}
             onPress={handleNext}
             activeOpacity={0.8}
+            disabled={isSaving}
           >
-            <Text
-              style={[styles.nextText, !isFormComplete && styles.nextTextMuted]}
-            >
-              {isFormComplete ? "Continue to Photos" : "Complete All Fields"}
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={isFormComplete ? colors.white : "#9CA3AF"}
-            />
+            {isSaving ? (
+              <>
+                <ActivityIndicator size="small" color={colors.white} />
+                <Text style={styles.nextText}>Saving...</Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={[styles.nextText, !isFormComplete && styles.nextTextMuted]}
+                >
+                  {isFormComplete ? "Continue to Photos" : "Complete All Fields"}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={isFormComplete ? colors.white : "#9CA3AF"}
+                />
+              </>
+            )}
           </TouchableOpacity>
         </Animated.View>
 
