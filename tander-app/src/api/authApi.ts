@@ -34,6 +34,12 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface ProfileIncompleteError {
+  message: string;
+  profileCompleted: boolean;
+  username: string;
+}
+
 export const authApi = {
   register: async (data: RegisterRequest): Promise<string> => {
     try {
@@ -58,6 +64,17 @@ export const authApi = {
         token: token || '',
       };
     } catch (error: any) {
+      // Handle profile incomplete error (403 with profileCompleted: false)
+      if (error.response?.status === 403 && error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.profileCompleted === false) {
+          // Create custom error with profile incomplete info
+          const profileError: any = new Error(errorData.message);
+          profileError.profileIncomplete = true;
+          profileError.username = errorData.username;
+          throw profileError;
+        }
+      }
       throw new Error(error.response?.data?.message || 'Login failed');
     }
   },

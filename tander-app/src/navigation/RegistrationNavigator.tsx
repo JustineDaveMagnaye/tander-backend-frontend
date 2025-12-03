@@ -17,24 +17,27 @@ import { RegistrationStackParamList } from "./NavigationTypes";
 const Stack = createNativeStackNavigator<RegistrationStackParamList>();
 
 export default function RegistrationNavigator() {
-  const { register, completeProfile } = useAuth();
+  const { completeProfile, phase1Data } = useAuth();
 
   const handleRegistration = async (values: any) => {
     try {
-      // TODO: Add a Step 0 to collect username, email, and password
-      // For now, we'll use placeholder values for testing
+      // Check if Phase 1 data exists
+      if (!phase1Data) {
+        Alert.alert(
+          'Error',
+          'Please complete account creation first.',
+          [
+            {
+              text: 'Go Back',
+              onPress: () => NavigationService.navigate('Auth', { screen: 'AccountIntroScreen' }),
+            },
+          ]
+        );
+        return;
+      }
 
-      // Derive username from email (you should collect this in a separate step)
-      const username = values.email?.split('@')[0] || `${values.firstName.toLowerCase()}${values.lastName.toLowerCase()}`;
-      const email = values.email || '';
-      const password = 'TempPassword123!'; // TODO: This should come from a password field in Step 0
-
-      // Phase 1: Create basic account
-      await register({
-        username,
-        email,
-        password,
-      });
+      // Use Phase 1 credentials from context
+      const { username, email } = phase1Data;
 
       // Phase 2: Complete profile with all details
       await completeProfile(username, {
@@ -53,11 +56,19 @@ export default function RegistrationNavigator() {
         hobby: values.hobby || '',
       });
 
-      Alert.alert('Success', 'Registration completed! Please login with your credentials.');
-      NavigationService.navigate('Auth', { screen: 'LoginScreen' });
+      Alert.alert(
+        'Success',
+        'Registration completed! Please login with your credentials.',
+        [
+          {
+            text: 'Login',
+            onPress: () => NavigationService.navigate('Auth', { screen: 'LoginScreen' }),
+          },
+        ]
+      );
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message || 'Please try again.');
-      console.error('Registration error:', error);
+      console.error('Phase 2 registration error:', error);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ReactNode } from 'react';
-import { AuthContext } from './AuthContext';
+import { AuthContext, Phase1RegistrationData } from './AuthContext';
 import authApi, { LoginRequest, RegisterRequest, CompleteProfileRequest } from '../api/authApi';
 
 interface AuthProviderProps {
@@ -10,6 +10,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const [phase1Data, setPhase1Data] = useState<Phase1RegistrationData | null>(null);
 
   const checkAuth = async () => {
     try {
@@ -38,7 +39,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authApi.login(credentials);
       setToken(response.token);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch (error: any) {
+      // If profile is incomplete, store credentials for Phase 2 completion
+      if (error.profileIncomplete && error.username) {
+        setPhase1Data({
+          username: error.username,
+          email: credentials.username, // Store the entered username (could be email)
+          password: credentials.password,
+        });
+      }
       console.error('Login error:', error);
       throw error;
     }
@@ -79,11 +88,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAuthenticated,
         isLoading,
         token,
+        phase1Data,
         login,
         register,
         completeProfile,
         logout,
         checkAuth,
+        setPhase1Data,
       }}
     >
       {children}

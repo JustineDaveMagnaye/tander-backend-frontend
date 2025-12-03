@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Image,
   Platform,
@@ -19,9 +20,29 @@ import AppText from "@/src/components/inputs/AppText";
 import FullScreen from "@/src/components/layout/FullScreen";
 import colors from "@/src/config/colors";
 import NavigationService from "@/src/navigation/NavigationService";
+import { useAuth } from "@/src/hooks/useAuth";
+import { Formik } from "formik";
+import * as Yup from "yup";
+
+const accountIntroSchema = Yup.object().shape({
+  email: Yup.string()
+    .email("Please enter a valid email")
+    .required("Email is required"),
+  password: Yup.string()
+    .min(8, "Password must be at least 8 characters")
+    .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+    .matches(/[0-9]/, "Password must contain at least one number")
+    .required("Password is required"),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("password")], "Passwords must match")
+    .required("Please confirm your password"),
+});
 
 export default function AccountIntroScreen() {
   const [useBiometric, setUseBiometric] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const { register, setPhase1Data } = useAuth();
 
   // entrance animation for card + icon
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -108,58 +129,127 @@ export default function AccountIntroScreen() {
             </View>
           </View>
 
-          <AppTextInput icon="mail-outline" placeholder="Email or Username" />
-          <AppTextInput
-            icon="lock-closed-outline"
-            placeholder="Create a password"
-            secureTextEntry
-          />
-          <AppTextInput
-            icon="shield-checkmark-outline"
-            placeholder="Confirm password"
-            secureTextEntry
-          />
+          <Formik
+            initialValues={{ email: "", password: "", confirmPassword: "" }}
+            validationSchema={accountIntroSchema}
+            onSubmit={async (values, { setSubmitting }) => {
+              try {
+                setIsLoading(true);
 
-          <View style={styles.biometricRow}>
-            <View>
-              <Text style={styles.biometricTitle}>Enable Biometric</Text>
-              <Text style={styles.biometricSubtitle}>
-                Use fingerprint or face ID for faster login.
-              </Text>
-            </View>
-            <Switch
-              value={useBiometric}
-              onValueChange={setUseBiometric}
-              trackColor={{ false: colors.borderMedium, true: colors.primary }}
-              thumbColor={useBiometric ? colors.white : colors.backgroundLight}
-            />
-          </View>
+                // Derive username from email (before @ symbol)
+                const username = values.email.split("@")[0];
 
-          <GradientButton
-            title="Create Account"
-            // onPress={() => NavigationService.navigate("Step1BasicInfo")}
-            // onPress={() =>
-            //   NavigationService.replace("Register", {
-            //     screen: "Step1BasicInfo",
-            //   })
-            // }
-            onPress={() =>
-              NavigationService.navigate("Auth", { screen: "Register" })
-            }
-            style={{ marginTop: 6 }}
-          />
+                // Phase 1: Create basic account
+                await register({
+                  username,
+                  email: values.email,
+                  password: values.password,
+                });
 
-          <TouchableOpacity
-            onPress={() =>
-              NavigationService.replace("Auth", { screen: "LoginScreen" })
-            }
-            style={styles.footerLink}
+                // Store Phase 1 data for Phase 2
+                setPhase1Data({
+                  username,
+                  email: values.email,
+                  password: values.password,
+                });
+
+                Alert.alert(
+                  "Account Created!",
+                  "Please complete your profile to continue.",
+                  [
+                    {
+                      text: "Continue",
+                      onPress: () =>
+                        NavigationService.navigate("Auth", { screen: "Register" }),
+                    },
+                  ]
+                );
+              } catch (error: any) {
+                Alert.alert(
+                  "Registration Failed",
+                  error.message || "Please try again."
+                );
+                console.error("Phase 1 registration error:", error);
+              } finally {
+                setIsLoading(false);
+                setSubmitting(false);
+              }
+            }}
           >
-            <Text style={styles.footerText}>
-              Already have an account?
-              <Text style={styles.footerAction}> Sign In</Text>
-            </Text>
-          </TouchableOpacity>
+            {({
+              handleChange,
+              handleSubmit,
+              handleBlur,
+              values,
+              errors,
+              touched,
+            }) => (
+              <>
+                <AppTextInput
+                  icon="mail-outline"
+                  placeholder="Email"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={values.email}
+                  onChangeText={handleChange("email")}
+                  onBlur={handleBlur("email")}
+                  error={touched.email ? errors.email : null}
+                />
+                <AppTextInput
+                  icon="lock-closed-outline"
+                  placeholder="Create a password"
+                  secureTextEntry
+                  value={values.password}
+                  onChangeText={handleChange("password")}
+                  onBlur={handleBlur("password")}
+                  error={touched.password ? errors.password : null}
+                />
+                <AppTextInput
+                  icon="shield-checkmark-outline"
+                  placeholder="Confirm password"
+                  secureTextEntry
+                  value={values.confirmPassword}
+                  onChangeText={handleChange("confirmPassword")}
+                  onBlur={handleBlur("confirmPassword")}
+                  error={touched.confirmPassword ? errors.confirmPassword : null}
+                />
+
+                <View style={styles.biometricRow}>
+                  <View>
+                    <Text style={styles.biometricTitle}>Enable Biometric</Text>
+                    <Text style={styles.biometricSubtitle}>
+                      Use fingerprint or face ID for faster login.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={useBiometric}
+                    onValueChange={setUseBiometric}
+                    trackColor={{ false: colors.borderMedium, true: colors.primary }}
+                    thumbColor={useBiometric ? colors.white : colors.backgroundLight}
+                  />
+                </View>
+
+                <GradientButton
+                  title={isLoading ? "Creating Account..." : "Create Account"}
+                  onPress={handleSubmit}
+                  disabled={isLoading}
+                  style={{ marginTop: 6 }}
+                />
+
+                <TouchableOpacity
+                  onPress={() =>
+                    NavigationService.replace("Auth", { screen: "LoginScreen" })
+                  }
+                  style={styles.footerLink}
+                >
+                  <Text style={styles.footerText}>
+                    Already have an account?
+                    <Text style={styles.footerAction}> Sign In</Text>
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Formik>
         </Animated.View>
       </SafeAreaView>
     </FullScreen>
