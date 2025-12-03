@@ -8,18 +8,24 @@ import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +41,9 @@ public class IdVerificationServiceImpl implements IdVerificationService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Value("${file.upload.id-verification-path}")
+    private String uploadPath;
 
     private final Tesseract tesseract;
 
@@ -57,6 +66,17 @@ public class IdVerificationServiceImpl implements IdVerificationService {
             // Update status to PROCESSING
             user.setIdVerificationStatus("PROCESSING");
             userRepository.save(user);
+
+            // Save ID photos to D:/ drive
+            String frontPhotoPath = saveIdPhoto(idPhotoFront, user.getUsername(), "front");
+            String backPhotoPath = saveIdPhoto(idPhotoBack, user.getUsername(), "back");
+
+            // Store file paths in user entity
+            user.setIdPhotoFrontUrl(frontPhotoPath);
+            user.setIdPhotoBackUrl(backPhotoPath);
+            userRepository.save(user);
+
+            LOGGER.info("📸 ID photos saved - Front: {}, Back: {}", frontPhotoPath, backPhotoPath);
 
             // Extract text from front photo (primary)
             String extractedText = extractTextFromImage(idPhotoFront);
@@ -215,5 +235,45 @@ public class IdVerificationServiceImpl implements IdVerificationService {
         LocalDate currentDate = LocalDate.now();
 
         return Period.between(birthLocalDate, currentDate).getYears();
+    }
+
+    /**
+     * Saves uploaded ID photo to D:/ drive.
+     *
+     * @param file the multipart file to save
+     * @param username the username (for organizing files)
+     * @param photoType "front" or "back"
+     * @return the saved file path
+     * @throws IOException if file save fails
+     */
+    private String saveIdPhoto(MultipartFile file, String username, String photoType) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        // Create upload directory if it doesn't exist
+        Path uploadDir = Paths.get(uploadPath);
+        if (!Files.exists(uploadDir)) {
+            Files.createDirectories(uploadDir);
+            LOGGER.info("📁 Created upload directory: {}", uploadDir.toAbsolutePath());
+        }
+
+        // Generate unique filename: username_photoType_timestamp_uuid.extension
+        String originalFilename = file.getOriginalFilename();
+        String extension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : ".jpg";
+
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+        String filename = String.format("%s_%s_%s_%s%s", username, photoType, timestamp, uniqueId, extension);
+
+        // Save file to disk
+        Path filePath = uploadDir.resolve(filename);
+        Files.copy(file.getInputStream(), filePath);
+
+        LOGGER.info("💾 Saved {} ID photo to: {}", photoType, filePath.toAbsolutePath());
+
+        return filePath.toString();
     }
 }
