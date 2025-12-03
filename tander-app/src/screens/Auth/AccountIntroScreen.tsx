@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Image,
   Platform,
@@ -21,6 +20,7 @@ import FullScreen from "@/src/components/layout/FullScreen";
 import colors from "@/src/config/colors";
 import NavigationService from "@/src/navigation/NavigationService";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useToast } from "@/src/context/ToastContext";
 import { Formik } from "formik";
 import * as Yup from "yup";
 
@@ -43,6 +43,7 @@ export default function AccountIntroScreen() {
   const [useBiometric, setUseBiometric] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { register, setPhase1Data } = useAuth();
+  const toast = useToast();
 
   // entrance animation for card + icon
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -170,26 +171,26 @@ export default function AccountIntroScreen() {
 
                 console.log('🟡 [AccountIntroScreen] Phase1Data stored in context');
 
-                Alert.alert(
-                  "Account Created!",
-                  "Please complete your profile to continue.",
-                  [
-                    {
-                      text: "Continue",
-                      onPress: () =>
-                        NavigationService.navigate("Auth", { screen: "Register" }),
-                    },
-                  ]
-                );
+                toast.showToast({
+                  type: 'success',
+                  message: "Account created! Please complete your profile to continue.",
+                  duration: 5000,
+                  action: {
+                    label: 'Continue',
+                    onPress: () => NavigationService.navigate("Auth", { screen: "Register" }),
+                  },
+                });
+
+                // Auto-navigate after 2 seconds
+                setTimeout(() => {
+                  NavigationService.navigate("Auth", { screen: "Register" });
+                }, 2000);
               } catch (error: any) {
                 console.error('🔴 [AccountIntroScreen] Error caught:', error);
                 console.error('🔴 [AccountIntroScreen] Error message:', error.message);
                 console.error('🔴 [AccountIntroScreen] Error stack:', error.stack);
 
-                Alert.alert(
-                  "Registration Failed",
-                  error.message || "Please try again."
-                );
+                toast.error(error.message || "Registration failed. Please try again.");
               } finally {
                 setIsLoading(false);
                 setSubmitting(false);
