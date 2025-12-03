@@ -7,11 +7,14 @@ import { NavigationContainer } from "@react-navigation/native";
 import React from "react";
 import { navigationRef } from "./src/navigation/NavigationService";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { AuthProvider } from "./src/auth/AuthProvider";
 
 export default function App() {
   return (
-    <NavigationContainer ref={navigationRef}>
-      <RootNavigator />
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer ref={navigationRef}>
+        <RootNavigator />
+      </NavigationContainer>
+    </AuthProvider>
   );
 }
