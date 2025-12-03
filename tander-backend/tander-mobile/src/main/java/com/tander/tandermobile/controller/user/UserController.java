@@ -109,7 +109,8 @@ public class UserController {
         }
 
         // Check if user has completed profile registration (phase 2)
-        if (!loginUser.isProfileCompleted()) {
+        // Treat null as false (legacy records or incomplete profile)
+        if (!Boolean.TRUE.equals(loginUser.getProfileCompleted())) {
             // Return structured error response with profileCompleted status
             Map<String, Object> errorResponse = Map.of(
                 "message", "Please complete your profile registration before logging in.",
