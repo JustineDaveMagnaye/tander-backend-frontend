@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: osd-records-mgt-appl
+
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@localhost:1521/ROGATEPDB   # ✅ Must use PDB service name
+    username: prefect
+    password: Changeme2024
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.security.web: info
+    root: info
+  file:
+    name: build/log/${spring.application.name}.log
+
+jwt:
+  secret: "thebigbrownfoxjumpsoverthelazydog"

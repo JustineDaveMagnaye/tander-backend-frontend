@@ -1,0 +1,56 @@
+package com.tander.tandermobile.domain.audit;
+
+public enum AuditEventType {
+    // Authentication Events
+    LOGIN_SUCCESS,
+    LOGIN_FAILURE,
+    LOGOUT,
+    PASSWORD_RESET_REQUEST,
+    PASSWORD_RESET_SUCCESS,
+    PASSWORD_RESET_FAILURE,
+
+    // User Registration Events
+    REGISTRATION_PHASE1_SUCCESS,
+    REGISTRATION_PHASE1_FAILURE,
+    REGISTRATION_PHASE2_SUCCESS,
+    REGISTRATION_PHASE2_FAILURE,
+    OTP_SENT,
+    OTP_VERIFICATION_SUCCESS,
+    OTP_VERIFICATION_FAILURE,
+
+    // Profile Events
+    PROFILE_VIEW,
+    PROFILE_UPDATE_SUCCESS,
+    PROFILE_UPDATE_FAILURE,
+    PROFILE_DELETE,
+
+    // Chat/Messaging Events (for future implementation)
+    CHAT_MESSAGE_SENT,
+    CHAT_MESSAGE_RECEIVED,
+    CHAT_MESSAGE_FAILED,
+    CHAT_MESSAGE_DELETED,
+    CHAT_CONVERSATION_STARTED,
+    CHAT_CONVERSATION_ENDED,
+
+    // Video Call Events (for future implementation)
+    VIDEO_CALL_INITIATED,
+    VIDEO_CALL_CONNECTED,
+    VIDEO_CALL_FAILED,
+    VIDEO_CALL_ENDED,
+    VIDEO_CALL_REJECTED,
+    VIDEO_CALL_MISSED,
+
+    // Connection/Match Events (for future implementation)
+    PROFILE_SWIPED_RIGHT,
+    PROFILE_SWIPED_LEFT,
+    PROFILE_SUPER_LIKED,
+    MATCH_CREATED,
+    MATCH_DELETED,
+    UNMATCH,
+
+    // Account Events
+    ACCOUNT_LOCKED,
+    ACCOUNT_UNLOCKED,
+    ACCOUNT_SOFT_DELETED,
+    ACCOUNT_REACTIVATED
+}
