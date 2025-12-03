@@ -139,6 +139,11 @@ export default function LoginScreen() {
                     error={touched.password ? errors.password : null}
                   />
 
+                  {/* Forgot Password */}
+                  <TouchableOpacity onPress={() => console.log("Forgot")}>
+                    <Text style={styles.forgotText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+
                   {/* Error Message */}
                   {errorMessage && (
                     <View style={styles.errorContainer}>
@@ -153,11 +158,6 @@ export default function LoginScreen() {
                       )}
                     </View>
                   )}
-
-                  {/* Forgot Password */}
-                  <TouchableOpacity onPress={() => console.log("Forgot")}>
-                    <Text style={styles.forgotText}>Forgot Password?</Text>
-                  </TouchableOpacity>
 
                   {/* LOGIN */}
                   <GradientButton
@@ -248,8 +248,8 @@ const styles = StyleSheet.create({
     borderLeftColor: "#EF4444",
     borderRadius: 8,
     padding: 12,
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 16,
   },
   errorText: {
     color: "#991B1B",
