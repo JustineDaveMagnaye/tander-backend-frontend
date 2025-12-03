@@ -96,7 +96,12 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+
+        // Allow all origins for development (includes ngrok, cloudflare tunnel, localhost)
+        // In production, replace with specific domains
+        configuration.setAllowedOriginPatterns(List.of("*")); // Allows any origin
+        configuration.setAllowCredentials(true); // Important for mobile apps
+
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of(
                 "Access-Control-Allow-Headers",
@@ -111,7 +116,8 @@ public class SecurityConfiguration {
                 "Access-Control-Request-Headers",
                 "Jwt-Token",
                 "Uid"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
