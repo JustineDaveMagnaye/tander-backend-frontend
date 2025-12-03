@@ -99,11 +99,14 @@ export const authApi = {
     }
   },
 
-  completeProfile: async (username: string, data: CompleteProfileRequest): Promise<string> => {
+  completeProfile: async (username: string, data: CompleteProfileRequest, markAsComplete: boolean = true): Promise<string> => {
     try {
-      const response = await apiClient.post(`/user/complete-profile?username=${username}`, data);
+      console.log(`🟡 [authApi.completeProfile] Calling with markAsComplete=${markAsComplete}`);
+      const response = await apiClient.post(`/user/complete-profile?username=${username}&markAsComplete=${markAsComplete}`, data);
+      console.log('✅ [authApi.completeProfile] Success:', response.data);
       return response.data;
     } catch (error: any) {
+      console.error('🔴 [authApi.completeProfile] Error:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Profile completion failed');
     }
   },

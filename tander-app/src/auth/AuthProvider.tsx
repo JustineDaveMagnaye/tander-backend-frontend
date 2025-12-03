@@ -65,11 +65,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const completeProfile = async (username: string, data: CompleteProfileRequest) => {
+  const completeProfile = async (username: string, data: CompleteProfileRequest, markAsComplete: boolean = true) => {
     try {
-      await authApi.completeProfile(username, data);
+      console.log(`🟡 [AuthProvider.completeProfile] markAsComplete=${markAsComplete}`);
+      await authApi.completeProfile(username, data, markAsComplete);
+      console.log('✅ [AuthProvider.completeProfile] Success');
     } catch (error) {
-      console.error('Complete profile error:', error);
+      console.error('🔴 [AuthProvider.completeProfile] Error:', error);
       throw error;
     }
   };

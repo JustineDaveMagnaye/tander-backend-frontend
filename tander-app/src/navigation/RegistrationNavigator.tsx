@@ -73,7 +73,10 @@ export default function RegistrationNavigator() {
       };
 
       console.log('🟡 [RegistrationNavigator] Calling completeProfile with:', profileData);
-      await completeProfile(username, profileData);
+      console.log('🟡 [RegistrationNavigator] markAsComplete=true (final registration)');
+
+      // Final registration - mark profile as complete (markAsComplete=true)
+      await completeProfile(username, profileData, true);
 
       console.log('✅ [RegistrationNavigator] Profile completed successfully!');
 
