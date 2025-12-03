@@ -48,7 +48,13 @@ public class RecaptchaService {
             return true;
         }
 
+        // Allow null/empty tokens when using Google's test keys (development mode)
+        boolean isTestKey = secretKey != null && secretKey.equals("6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe");
         if (token == null || token.isEmpty()) {
+            if (isTestKey) {
+                LOGGER.warn("⚠️ reCAPTCHA token is null - allowing because test key is active (development mode)");
+                return true;
+            }
             LOGGER.error("❌ reCAPTCHA token is null or empty");
             return false;
         }
