@@ -19,9 +19,9 @@ import UniversalBiometricButton from "@/src/components/buttons/UniversalBiometri
 import NavigationService from "@/src/navigation/NavigationService";
 
 // 🔥 Our new Google login hook
-import { useGoogleLogin } from "@/src/hooks/useGoogleLogin";
-import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/context/ToastContext";
+import { useAuth } from "@/src/hooks/useAuth";
+import { useGoogleLogin } from "@/src/hooks/useGoogleLogin";
 
 export default function LoginScreen() {
   const [agree, setAgree] = useState(false);
@@ -99,10 +99,7 @@ export default function LoginScreen() {
                   if (error.profileIncomplete) {
                     toast.warning("Profile incomplete. Redirecting to complete your profile...");
                     setTimeout(() => {
-                      NavigationService.navigate("Registration", {
-                        screen: "Step1BasicInfo",
-                        params: { username: error.username },
-                      });
+                      NavigationService.navigate("Auth", { screen: "Register" });
                     }, 1500);
                   }
                   // ✅ Redirect to Step 2 if ID verification is incomplete
@@ -205,9 +202,9 @@ export default function LoginScreen() {
                       label="Don't have an account?"
                       actionText="Sign Up"
                       onPress={() =>
-                        NavigationService.navigate("Auth", {
-                          screen: "Register",
-                        })
+                        NavigationService.navigate("Onboarding", {
+                        screen: "AccountIntroScreen",
+                      })
                       }
                     />
                   </View>
