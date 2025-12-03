@@ -6,6 +6,7 @@ import com.tander.tandermobile.domain.user.User;
 import com.tander.tandermobile.domain.user.principal.UserPrincipal;
 import com.tander.tandermobile.exception.domain.*;
 import com.tander.tandermobile.service.ratelimit.RateLimitService;
+import com.tander.tandermobile.service.recaptcha.RecaptchaService;
 import com.tander.tandermobile.service.user.UserService;
 import com.tander.tandermobile.utils.security.jwt.provider.token.JWTTokenProvider;
 import jakarta.mail.MessagingException;
@@ -35,6 +36,7 @@ public class UserController {
 
     private final UserService userService;
     private final RateLimitService rateLimitService;
+    private final RecaptchaService recaptchaService;
     private AuthenticationManager authenticationManager;
     private JWTTokenProvider jwtTokenProvider;
 
@@ -43,14 +45,17 @@ public class UserController {
      *
      * @param userService           service handling user operations
      * @param rateLimitService      service for rate limiting
+     * @param recaptchaService      service for reCAPTCHA verification
      * @param authenticationManager handles authentication
      * @param jwtTokenProvider      provides JWT token
      */
     @Autowired
     public UserController(UserService userService, RateLimitService rateLimitService,
+                          RecaptchaService recaptchaService,
                           AuthenticationManager authenticationManager, JWTTokenProvider jwtTokenProvider) {
         this.userService = userService;
         this.rateLimitService = rateLimitService;
+        this.recaptchaService = recaptchaService;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
     }
@@ -112,12 +117,13 @@ public class UserController {
     /**
      * Phase 3 Registration: Automated ID verification using OCR.
      * Extracts birthdate from ID photos, calculates age, and auto-approves if age >= 60.
-     * Rate limited to prevent abuse (10 requests per minute per IP).
+     * Protected by: rate limiting + invisible reCAPTCHA v3 (senior-friendly, no interaction).
      *
      * @param username the username of the user to verify
      * @param idPhotoFront front photo of government-issued ID (required)
      * @param idPhotoBack back photo of ID (optional)
      * @param verificationToken verification token from phase 2 (optional for backward compatibility)
+     * @param recaptchaToken reCAPTCHA v3 token from frontend (optional, defaults to enabled)
      * @param request HTTP request to extract IP address
      * @return verification result message
      */
@@ -127,14 +133,23 @@ public class UserController {
             @RequestParam("idPhotoFront") org.springframework.web.multipart.MultipartFile idPhotoFront,
             @RequestParam(value = "idPhotoBack", required = false) org.springframework.web.multipart.MultipartFile idPhotoBack,
             @RequestParam(value = "verificationToken", required = false) String verificationToken,
+            @RequestParam(value = "recaptchaToken", required = false) String recaptchaToken,
             HttpServletRequest request) {
         try {
-            // Rate limiting check
+            // 1. Rate limiting check (10 req/min per IP)
             String ipAddress = getClientIpAddress(request);
             if (!rateLimitService.allowRequest(ipAddress, "/user/verify-id")) {
                 return new ResponseEntity<>("Rate limit exceeded. Please try again later.", null, HttpStatus.TOO_MANY_REQUESTS);
             }
 
+            // 2. reCAPTCHA verification (invisible, senior-friendly)
+            if (recaptchaService.isEnabled()) {
+                if (!recaptchaService.verifyToken(recaptchaToken, "verify_id")) {
+                    return new ResponseEntity<>("Bot detection failed. Please try again.", null, HttpStatus.FORBIDDEN);
+                }
+            }
+
+            // 3. Process ID verification
             String result = userService.verifyId(username, idPhotoFront, idPhotoBack, verificationToken);
             return new ResponseEntity<>(result, null, HttpStatus.OK);
         } catch (Exception e) {
