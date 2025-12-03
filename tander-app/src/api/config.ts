@@ -38,7 +38,7 @@ const apiClient = axios.create({
   },
   timeout: 30000, // Increased timeout for tunnel latency (30 seconds)
   maxRedirects: 5, // Follow redirects from tunnels
-  validateStatus: (status) => status < 500, // Accept 4xx responses (for better error handling)
+  // ✅ Let axios handle errors naturally (401, 403 = errors, not success)
 });
 
 apiClient.interceptors.request.use(
