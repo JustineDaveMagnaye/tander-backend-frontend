@@ -1,7 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Formik } from "formik";
 import React from "react";
-import { Alert } from "react-native";
 
 import RegistrationComplete from "../screens/Registration/RegistrationComplete";
 import Step1BasicInfo from "../screens/Registration/Step1BasicInfo";
@@ -10,6 +9,7 @@ import Step3AboutYou from "../screens/Registration/Step3AboutYou";
 
 import RegistrationSchema from "../context/RegistrationSchema";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../context/ToastContext";
 import NavigationService from "./NavigationService";
 
 import { RegistrationStackParamList } from "./NavigationTypes";
@@ -18,21 +18,21 @@ const Stack = createNativeStackNavigator<RegistrationStackParamList>();
 
 export default function RegistrationNavigator() {
   const { completeProfile, phase1Data } = useAuth();
+  const toast = useToast();
 
   const handleRegistration = async (values: any) => {
     try {
       // Check if Phase 1 data exists
       if (!phase1Data) {
-        Alert.alert(
-          'Error',
-          'Please complete account creation first.',
-          [
-            {
-              text: 'Go Back',
-              onPress: () => NavigationService.navigate('Auth', { screen: 'AccountIntroScreen' }),
-            },
-          ]
-        );
+        toast.showToast({
+          type: 'error',
+          message: 'Please complete account creation first.',
+          duration: 5000,
+          action: {
+            label: 'Go Back',
+            onPress: () => NavigationService.navigate('Auth', { screen: 'AccountIntroScreen' }),
+          },
+        });
         return;
       }
 
@@ -56,18 +56,22 @@ export default function RegistrationNavigator() {
         hobby: values.hobby || '',
       });
 
-      Alert.alert(
-        'Success',
-        'Registration completed! Please login with your credentials.',
-        [
-          {
-            text: 'Login',
-            onPress: () => NavigationService.navigate('Auth', { screen: 'LoginScreen' }),
-          },
-        ]
-      );
+      toast.showToast({
+        type: 'success',
+        message: 'Registration completed! Please login with your credentials.',
+        duration: 5000,
+        action: {
+          label: 'Login',
+          onPress: () => NavigationService.navigate('Auth', { screen: 'LoginScreen' }),
+        },
+      });
+
+      // Auto-navigate after 2 seconds
+      setTimeout(() => {
+        NavigationService.navigate('Auth', { screen: 'LoginScreen' });
+      }, 2000);
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'Please try again.');
+      toast.error(error.message || 'Registration failed. Please try again.');
       console.error('Phase 2 registration error:', error);
     }
   };

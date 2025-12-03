@@ -5,7 +5,7 @@ import CheckboxWithLabel from "@/src/components/common/CheckboxWithLabel";
 import FullScreen from "@/src/components/layout/FullScreen";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeaderWithLogo from "../../components/common/AppHeaderWithLogo";
 import AppTextInput from "../../components/common/AppTextInput";
@@ -21,12 +21,11 @@ import NavigationService from "@/src/navigation/NavigationService";
 // 🔥 Our new Google login hook
 import { useGoogleLogin } from "@/src/hooks/useGoogleLogin";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useToast } from "@/src/context/ToastContext";
 
 export default function LoginScreen() {
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showProfileIncomplete, setShowProfileIncomplete] = useState(false);
 
   // 🎉 Import Google login handler
   const { login: googleLogin } = useGoogleLogin();
@@ -34,20 +33,24 @@ export default function LoginScreen() {
   // 🎉 Import auth handler
   const { login } = useAuth();
 
+  // 🎉 Import toast handler
+  const toast = useToast();
+
   // ⭐ GOOGLE LOGIN HANDLER
   const handleGoogleLogin = async () => {
     try {
       const user = await googleLogin();
       if (!user) {
-        Alert.alert("Google Login Failed", "Please try again.");
+        toast.error("Google login failed. Please try again.");
         return;
       }
 
       console.log("GOOGLE USER:", user);
-
+      toast.success("Successfully signed in with Google!");
       NavigationService.replace("LoginSuccessScreen");
     } catch (err) {
       console.log("Google Login Error:", err);
+      toast.error("Google login failed. Please try again.");
     }
   };
 
@@ -85,22 +88,28 @@ export default function LoginScreen() {
               onSubmit={async (values, { setSubmitting }) => {
                 try {
                   setIsLoading(true);
-                  setErrorMessage(null);
-                  setShowProfileIncomplete(false);
 
                   await login(values);
+                  toast.success("Login successful! Welcome back.");
                   NavigationService.replace("LoginSuccessScreen");
                 } catch (error: any) {
                   console.error("Login error:", error);
 
                   // Check if error is due to incomplete profile
                   if (error.profileIncomplete) {
-                    setShowProfileIncomplete(true);
-                    setErrorMessage("Your profile is incomplete. Please complete your registration to continue.");
+                    toast.showToast({
+                      type: 'warning',
+                      message: "Your profile is incomplete. Please complete your registration to continue.",
+                      duration: 6000,
+                      action: {
+                        label: 'Complete Profile',
+                        onPress: () => NavigationService.navigate("Auth", { screen: "Register" }),
+                      },
+                    });
                   } else if (error.code === 'INVALID_CREDENTIALS') {
-                    setErrorMessage("Incorrect username or password. Please try again.");
+                    toast.error("Incorrect username or password. Please try again.");
                   } else {
-                    setErrorMessage(error.message || "An error occurred. Please try again.");
+                    toast.error(error.message || "An error occurred. Please try again.");
                   }
                 } finally {
                   setIsLoading(false);
@@ -144,21 +153,6 @@ export default function LoginScreen() {
                     <Text style={styles.forgotText}>Forgot Password?</Text>
                   </TouchableOpacity>
 
-                  {/* Error Message */}
-                  {errorMessage && (
-                    <View style={styles.errorContainer}>
-                      <Text style={styles.errorText}>{errorMessage}</Text>
-                      {showProfileIncomplete && (
-                        <TouchableOpacity
-                          style={styles.completeProfileButton}
-                          onPress={() => NavigationService.navigate("Auth", { screen: "Register" })}
-                        >
-                          <Text style={styles.completeProfileText}>Complete Profile →</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
-
                   {/* LOGIN */}
                   <GradientButton
                     title={isLoading ? "Logging in..." : "Login"}
@@ -180,7 +174,7 @@ export default function LoginScreen() {
                   <SocialButton
                     title="Continue with Apple"
                     icon={require("../../assets/icons/apple.png")}
-                    onPress={() => Alert.alert("Apple login not yet enabled")}
+                    onPress={() => toast.info("Apple login coming soon!")}
                     style={{ marginTop: 10 }}
                   />
 
@@ -241,34 +235,6 @@ const styles = StyleSheet.create({
     color: colors.accentTeal,
     fontSize: 14,
     fontWeight: "500",
-  },
-  errorContainer: {
-    backgroundColor: "#FEE2E2",
-    borderLeftWidth: 4,
-    borderLeftColor: "#EF4444",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: "#991B1B",
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-  completeProfileButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#DBEAFE",
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  completeProfileText: {
-    color: "#1E40AF",
-    fontSize: 14,
-    fontWeight: "600",
   },
   biometricRow: {
     justifyContent: "center",
