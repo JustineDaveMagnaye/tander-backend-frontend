@@ -55,9 +55,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (data: RegisterRequest) => {
     try {
-      await authApi.register(data);
+      console.log('🟢 [AuthProvider.register] Called with data:', data);
+      const result = await authApi.register(data);
+      console.log('🟢 [AuthProvider.register] Success! Result:', result);
+      return result;
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('🔴 [AuthProvider.register] Error:', error);
       throw error;
     }
   };

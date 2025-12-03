@@ -43,10 +43,22 @@ export interface ProfileIncompleteError {
 export const authApi = {
   register: async (data: RegisterRequest): Promise<string> => {
     try {
+      console.log('🔵 [authApi.register] Starting registration...');
+      console.log('🔵 [authApi.register] Data:', JSON.stringify(data, null, 2));
+      console.log('🔵 [authApi.register] Endpoint: POST /user/register');
+
       const response = await apiClient.post('/user/register', data);
+
+      console.log('✅ [authApi.register] Success! Response:', response.data);
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      console.error('❌ [authApi.register] Error occurred:');
+      console.error('   Status:', error.response?.status);
+      console.error('   Message:', error.response?.data?.message || error.message);
+      console.error('   Full error:', JSON.stringify(error.response?.data, null, 2));
+      console.error('   Network error:', error.message);
+
+      throw new Error(error.response?.data?.message || error.message || 'Registration failed');
     }
   },
 

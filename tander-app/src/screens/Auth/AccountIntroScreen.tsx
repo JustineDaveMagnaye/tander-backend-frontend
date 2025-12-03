@@ -133,18 +133,33 @@ export default function AccountIntroScreen() {
             initialValues={{ email: "", password: "", confirmPassword: "" }}
             validationSchema={accountIntroSchema}
             onSubmit={async (values, { setSubmitting }) => {
+              console.log('🟡 [AccountIntroScreen] Form submitted!');
+              console.log('🟡 [AccountIntroScreen] Form values:', {
+                email: values.email,
+                password: '***hidden***'
+              });
+
               try {
                 setIsLoading(true);
 
                 // Derive username from email (before @ symbol)
                 const username = values.email.split("@")[0];
+                console.log('🟡 [AccountIntroScreen] Derived username:', username);
 
                 // Phase 1: Create basic account
+                console.log('🟡 [AccountIntroScreen] Calling register() with:', {
+                  username,
+                  email: values.email,
+                  password: '***hidden***'
+                });
+
                 await register({
                   username,
                   email: values.email,
                   password: values.password,
                 });
+
+                console.log('🟡 [AccountIntroScreen] register() completed successfully!');
 
                 // Store Phase 1 data for Phase 2
                 setPhase1Data({
@@ -152,6 +167,8 @@ export default function AccountIntroScreen() {
                   email: values.email,
                   password: values.password,
                 });
+
+                console.log('🟡 [AccountIntroScreen] Phase1Data stored in context');
 
                 Alert.alert(
                   "Account Created!",
@@ -165,11 +182,14 @@ export default function AccountIntroScreen() {
                   ]
                 );
               } catch (error: any) {
+                console.error('🔴 [AccountIntroScreen] Error caught:', error);
+                console.error('🔴 [AccountIntroScreen] Error message:', error.message);
+                console.error('🔴 [AccountIntroScreen] Error stack:', error.stack);
+
                 Alert.alert(
                   "Registration Failed",
                   error.message || "Please try again."
                 );
-                console.error("Phase 1 registration error:", error);
               } finally {
                 setIsLoading(false);
                 setSubmitting(false);

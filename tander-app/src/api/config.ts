@@ -1,9 +1,30 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-export const API_BASE_URL = 'http://localhost:8080';
+// Platform-specific API URL configuration
+// - iOS Simulator: http://localhost:8080
+// - Android Emulator: http://10.0.2.2:8080
+// - Physical Device: Replace with your computer's IP address (e.g., http://192.168.1.100:8080)
+const getApiBaseUrl = () => {
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:8080'; // Android emulator
+    }
+    return 'http://localhost:8080'; // iOS simulator or web
+  }
+  // Production URL - update this for production deployment
+  return 'http://localhost:8080';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const TOKEN_KEY = '@tander_jwt_token';
+
+// Log API configuration on startup
+console.log('⚙️  [API Config] Platform:', Platform.OS);
+console.log('⚙️  [API Config] Base URL:', API_BASE_URL);
+console.log('⚙️  [API Config] Dev mode:', __DEV__);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -15,28 +36,46 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   async (config) => {
+    console.log(`🌐 [API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    console.log('🌐 [API Request] Headers:', config.headers);
+    if (config.data) {
+      console.log('🌐 [API Request] Body:', JSON.stringify(config.data, null, 2));
+    }
+
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
       config.headers['Jwt-Token'] = token;
+      console.log('🔑 [API Request] Token added to headers');
     }
     return config;
   },
   (error) => {
+    console.error('❌ [API Request Error]:', error);
     return Promise.reject(error);
   }
 );
 
 apiClient.interceptors.response.use(
   (response) => {
+    console.log(`✅ [API Response] ${response.status} ${response.config.url}`);
+    console.log('✅ [API Response] Data:', JSON.stringify(response.data, null, 2));
+
     const token = response.headers['jwt-token'];
     if (token) {
       AsyncStorage.setItem(TOKEN_KEY, token);
+      console.log('🔑 [API Response] JWT token saved');
     }
     return response;
   },
   async (error) => {
+    console.error(`❌ [API Response Error] ${error.config?.url}`);
+    console.error(`❌ [API Response Error] Status: ${error.response?.status}`);
+    console.error(`❌ [API Response Error] Data:`, JSON.stringify(error.response?.data, null, 2));
+    console.error(`❌ [API Response Error] Message:`, error.message);
+
     if (error.response?.status === 401) {
       await AsyncStorage.removeItem(TOKEN_KEY);
+      console.log('🔑 [API Response] Token removed due to 401');
     }
     return Promise.reject(error);
   }
