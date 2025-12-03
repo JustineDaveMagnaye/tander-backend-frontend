@@ -84,10 +84,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return userPrincipal;
     }
     private void validateLoginAttempt(User user) {
-        if (user.isLocked()) {
+        if (Boolean.TRUE.equals(user.getIsLocked())) {
             loginAttemptService.evictUserFromLoginAttemptCache(user.getUsername());
         } else if (loginAttemptService.hasExceededMaxAttempts(user.getUsername())) {
-            user.setLocked(true);
+            user.setIsLocked(true);
 
             // Log account lockout
             auditLogService.logEvent(
@@ -114,8 +114,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             newUser.setPassword(passwordEncoder.encode(register.getPassword()));
             newUser.setEmail(register.getEmail());
             newUser.setJoinDate(new Date());
-            newUser.setActive(true);
-            newUser.setLocked(false);
+            newUser.setIsActive(true);
+            newUser.setIsLocked(false);
             newUser.setRole(ROLE_USER.name());
             newUser.setAuthorities(List.of(ROLE_USER.getAuthorities()));
             newUser.setProfileCompleted(false); // Phase 1 only - profile not completed yet

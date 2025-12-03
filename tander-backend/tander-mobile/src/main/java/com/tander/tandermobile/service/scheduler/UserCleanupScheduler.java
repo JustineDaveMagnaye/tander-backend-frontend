@@ -47,7 +47,7 @@ public class UserCleanupScheduler {
 
                 if (daysSinceJoin >= SEVEN_DAYS_IN_MILLIS) {
                     user.setSoftDeletedAt(now);
-                    user.setActive(false);
+                    user.setIsActive(false);
                     userRepository.save(user);
                     softDeletedCount++;
                     LOGGER.info("Soft deleted user '{}' due to incomplete profile after 7 days", user.getUsername());
