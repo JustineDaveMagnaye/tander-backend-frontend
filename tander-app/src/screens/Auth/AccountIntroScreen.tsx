@@ -4,7 +4,9 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
+  KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -95,34 +97,45 @@ export default function AccountIntroScreen() {
       />
 
       <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
-        <View style={styles.header}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <View style={styles.avatarCircle}>
-              <Image
-                source={require("../../assets/icons/tander-logo.png")}
-                style={styles.avatar}
-                resizeMode="contain"
-              />
-            </View>
-          </Animated.View>
-
-          <AppText weight="semibold" style={styles.title}>
-            Create Account
-          </AppText>
-          <AppText style={styles.subtitle}>
-            Set up your profile to start connecting with the community.
-          </AppText>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.card,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY }],
-            },
-          ]}
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.header}>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <View style={styles.avatarCircle}>
+                  <Image
+                    source={require("../../assets/icons/tander-logo.png")}
+                    style={styles.avatar}
+                    resizeMode="contain"
+                  />
+                </View>
+              </Animated.View>
+
+              <AppText weight="semibold" style={styles.title}>
+                Create Account
+              </AppText>
+              <AppText style={styles.subtitle}>
+                Set up your profile to start connecting with the community.
+              </AppText>
+            </View>
+
+            <Animated.View
+              style={[
+                styles.card,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY }],
+                },
+              ]}
+            >
           <View style={styles.cardHeader}>
             <View style={styles.iconCircle}>
               <Ionicons name="person-add" size={22} color={colors.accentBlue} />
@@ -283,6 +296,8 @@ export default function AccountIntroScreen() {
             )}
           </Formik>
         </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </FullScreen>
   );
@@ -291,18 +306,27 @@ export default function AccountIntroScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 12 : 16,
     paddingBottom: Platform.OS === "ios" ? 22 : 20,
   },
   header: {
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 16,
   },
   avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.backgroundLight,
     alignItems: "center",
     justifyContent: "center",
@@ -313,39 +337,40 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   avatar: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 24,
+    lineHeight: 30,
     color: colors.textPrimary,
-    marginTop: 12,
+    marginTop: 10,
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textSecondary,
     textAlign: "center",
-    marginTop: 6,
+    marginTop: 4,
   },
   card: {
-    flex: 1,
     backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     shadowColor: colors.shadowMedium,
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 5,
+    marginBottom: 16,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
-    columnGap: 12,
+    marginBottom: 12,
+    columnGap: 10,
   },
   iconCircle: {
     width: 42,
@@ -369,12 +394,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: colors.backgroundLight,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   biometricTitle: {
     fontSize: 16,
