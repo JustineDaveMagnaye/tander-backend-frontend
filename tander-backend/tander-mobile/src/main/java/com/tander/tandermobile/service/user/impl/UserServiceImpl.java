@@ -207,7 +207,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             // ✅ Link the saved profile to user and mark as complete
             user.setProfile(savedProfile);
-            user.setProfileCompleted(markAsComplete);
+            user.setProfileCompleted(true);
 
             // Generate verification token when profile is marked as complete
             // This token is required for ID verification to prevent spoofing

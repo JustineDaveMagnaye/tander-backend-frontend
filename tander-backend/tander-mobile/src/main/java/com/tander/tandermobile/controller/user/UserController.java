@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -127,44 +128,48 @@ public class UserController {
      * @return verification result message
      */
     @PostMapping(value = "/verify-id", consumes = "multipart/form-data")
-    public ResponseEntity<String> verifyId(
+    public ResponseEntity<Map<String, Object>> verifyId(
             @RequestParam String username,
             @RequestParam("idPhotoFront") org.springframework.web.multipart.MultipartFile idPhotoFront,
             @RequestParam(value = "idPhotoBack", required = false) org.springframework.web.multipart.MultipartFile idPhotoBack,
             @RequestParam(value = "verificationToken", required = false) String verificationToken,
             @RequestParam(value = "recaptchaToken", required = false) String recaptchaToken,
             HttpServletRequest request) {
+
         try {
-            // 1. Rate limiting check (10 req/min per IP)
+            // 1. Rate limiting check
             String ipAddress = getClientIpAddress(request);
             if (!rateLimitService.allowRequest(ipAddress, "/user/verify-id")) {
-                HttpHeaders headers = new HttpHeaders();
-                headers.add("Content-Type", "text/plain;charset=UTF-8");
-                return new ResponseEntity<>("Rate limit exceeded. Please try again later.", headers, HttpStatus.TOO_MANY_REQUESTS);
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(Map.of("status", "error", "message", "Rate limit exceeded. Please try again later."));
             }
 
-            // 2. reCAPTCHA verification (invisible, senior-friendly)
-            if (recaptchaService.isEnabled()) {
-                if (!recaptchaService.verifyToken(recaptchaToken, "verify_id")) {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.add("Content-Type", "text/plain;charset=UTF-8");
-                    return new ResponseEntity<>("Bot detection failed. Please try again.", headers, HttpStatus.FORBIDDEN);
-                }
+            // 2. reCAPTCHA verification
+            if (recaptchaService.isEnabled() && !recaptchaService.verifyToken(recaptchaToken, "verify_id")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("status", "error", "message", "Bot detection failed. Please try again."));
             }
 
             // 3. Process ID verification
             String result = userService.verifyId(username, idPhotoFront, idPhotoBack, verificationToken);
-            return new ResponseEntity<>(result, null, HttpStatus.OK);
-        } catch (Exception e) {
-            // Log the error for debugging
-            System.err.println("❌ [UserController.verifyId] Error: " + e.getMessage());
 
-            // Return error message with proper headers
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Type", "text/plain;charset=UTF-8");
-            return new ResponseEntity<>(e.getMessage(), headers, HttpStatus.BAD_REQUEST);
+            // Success response
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", result
+            ));
+
+        } catch (com.tander.tandermobile.exception.IdVerificationException e) {
+            // Return structured error message from custom exception
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            // Catch-all for unexpected errors
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
+
 
     /**
      * Extracts client IP address from HTTP request, handling X-Forwarded-For header.

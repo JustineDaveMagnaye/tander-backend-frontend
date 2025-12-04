@@ -7,13 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Service for verifying Google reCAPTCHA v3 tokens.
- * Uses invisible reCAPTCHA optimized for senior citizens (no user interaction required).
- * FREE tier: 1 million assessments/month.
  */
 @Service
 public class RecaptchaService {
@@ -34,25 +31,17 @@ public class RecaptchaService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Verifies reCAPTCHA token from frontend.
-     * Returns true if verification passes and score is above threshold.
-     *
-     * @param token reCAPTCHA token from frontend
-     * @param action expected action name (e.g., "verify_id")
-     * @return true if human, false if bot or verification failed
-     */
     public boolean verifyToken(String token, String action) {
         if (!enabled) {
             LOGGER.warn("⚠️ reCAPTCHA is DISABLED - skipping verification");
             return true;
         }
 
-        // Allow null/empty tokens when using Google's test keys (development mode)
         boolean isTestKey = secretKey != null && secretKey.equals("6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe");
+
         if (token == null || token.isEmpty()) {
             if (isTestKey) {
-                LOGGER.warn("⚠️ reCAPTCHA token is null - allowing because test key is active (development mode)");
+                LOGGER.warn("⚠️ reCAPTCHA token is null - allowing because test key is active (dev mode)");
                 return true;
             }
             LOGGER.error("❌ reCAPTCHA token is null or empty");
@@ -60,11 +49,9 @@ public class RecaptchaService {
         }
 
         try {
-            // Build request parameters
             String requestUrl = String.format("%s?secret=%s&response=%s",
                     verificationUrl, secretKey, token);
 
-            // Call Google reCAPTCHA API
             ResponseEntity<Map> response = restTemplate.postForEntity(requestUrl, null, Map.class);
             Map<String, Object> responseBody = response.getBody();
 
@@ -80,13 +67,19 @@ public class RecaptchaService {
             LOGGER.info("🔍 reCAPTCHA result: success={}, score={}, action={}, threshold={}",
                     success, score, responseAction, scoreThreshold);
 
-            // Verify action matches (prevents token reuse)
+            // DEV MODE: Allow test keys to bypass action/score checks
+            if (isTestKey) {
+                LOGGER.warn("⚠️ Test key active - bypassing action and score checks");
+                return true;
+            }
+
+            // Verify action
             if (!responseAction.equals(action)) {
                 LOGGER.warn("⚠️ reCAPTCHA action mismatch: expected='{}', got='{}'", action, responseAction);
                 return false;
             }
 
-            // Check if score meets threshold
+            // Verify score
             if (success && score >= scoreThreshold) {
                 LOGGER.info("✅ reCAPTCHA verification passed (score: {})", score);
                 return true;
@@ -98,15 +91,11 @@ public class RecaptchaService {
 
         } catch (Exception e) {
             LOGGER.error("❌ reCAPTCHA verification error: {}", e.getMessage(), e);
-            // Fail open in case of API errors (better UX for seniors)
-            // In production, you might want to fail closed for security
-            return true;
+            // Fail open in case of API errors for better UX
+            return isTestKey || true;
         }
     }
 
-    /**
-     * Checks if reCAPTCHA is enabled in configuration.
-     */
     public boolean isEnabled() {
         return enabled;
     }

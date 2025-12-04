@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
 import javax.imageio.ImageIO;
@@ -35,7 +33,7 @@ public class IdVerificationServiceImpl implements IdVerificationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IdVerificationServiceImpl.class);
     private static final int MINIMUM_AGE = 60;
-    private static final double BLUR_THRESHOLD = 100.0; // Laplacian variance threshold
+    private static final double BLUR_THRESHOLD = 100.0;
 
     @Autowired
     private UserRepository userRepository;
@@ -56,85 +54,73 @@ public class IdVerificationServiceImpl implements IdVerificationService {
         tesseract = new Tesseract();
         tesseract.setDatapath(tessDataPath);
         tesseract.setLanguage(tessLanguage);
-        tesseract.setPageSegMode(1); // Automatic page segmentation
-        tesseract.setOcrEngineMode(1); // LSTM only
+        tesseract.setPageSegMode(1);
+        tesseract.setOcrEngineMode(1);
         LOGGER.info("Tesseract initialized with datapath: {}", tessDataPath);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public String verifyUserAge(User user, MultipartFile idPhotoFront, MultipartFile idPhotoBack) throws Exception {
-        try {
-            LOGGER.info("🔍 Verifying age for user: {}", user.getUsername());
+    public String verifyUserAge(User user, org.springframework.web.multipart.MultipartFile idPhotoFront, org.springframework.web.multipart.MultipartFile idPhotoBack) throws Exception {
 
-            // Validate file type and size
-            validateIdPhoto(idPhotoFront, "Front");
-            if (idPhotoBack != null && !idPhotoBack.isEmpty()) {
-                validateIdPhoto(idPhotoBack, "Back");
-            }
+        LOGGER.info("🔍 Verifying age for user: {}", user.getUsername());
 
-            // Save front photo
-            String frontPhotoPath = saveIdPhoto(idPhotoFront, user.getUsername(), "front");
-            user.setIdPhotoFrontUrl(frontPhotoPath);
-            userRepository.save(user);
-            LOGGER.info("💾 Saved front photo to {}", frontPhotoPath);
-
-            // Check image quality
-            if (!isImageQualityAcceptable(idPhotoFront)) {
-                user.setIdVerificationStatus("FAILED");
-                user.setIdVerified(false);
-                user.setVerificationFailureReason("ID photo too blurry");
-                userRepository.save(user);
-                throw new Exception("ID photo too blurry");
-            }
-
-            // Extract text
-            String extractedText = extractTextFromImage(idPhotoFront);
-            LOGGER.info("📄 Extracted text: {}", extractedText);
-
-            // Parse birthdate
-            Date birthdate = parseBirthdate(extractedText);
-            if (birthdate == null) {
-                user.setIdVerificationStatus("FAILED");
-                user.setIdVerified(false);
-                user.setVerificationFailureReason("Birthdate extraction failed");
-                userRepository.save(user);
-                throw new Exception("Birthdate extraction failed");
-            }
-
-            // Calculate age
-            int age = calculateAge(birthdate);
-            LOGGER.info("📅 Calculated age: {}", age);
-
-            // Save to user
-            user.setExtractedBirthdate(birthdate);
-            user.setExtractedAge(age);
-            user.setVerifiedAt(new Date());
-
-            // Check minimum age
-            if (age >= MINIMUM_AGE) {
-                user.setIdVerificationStatus("APPROVED");
-                user.setIdVerified(true);
-                user.setVerificationFailureReason(null);
-                userRepository.save(user);
-                return String.format("✅ Age verification passed. Age: %d", age);
-            } else {
-                user.setIdVerificationStatus("REJECTED");
-                user.setIdVerified(false);
-                user.setVerificationFailureReason(
-                        String.format("Age requirement not met. Minimum: %d, Your age: %d", MINIMUM_AGE, age));
-                userRepository.save(user);
-                throw new Exception(String.format("❌ Age requirement not met. You must be at least %d years old.", MINIMUM_AGE));
-            }
-
-        } catch (Exception e) {
-            LOGGER.error("🔴 Verification error: {}", e.getMessage());
-            throw e;
+        // Validate photos
+        validateIdPhoto(idPhotoFront, "Front");
+        if (idPhotoBack != null && !idPhotoBack.isEmpty()) {
+            validateIdPhoto(idPhotoBack, "Back");
         }
+
+        // Save front photo
+        String frontPhotoPath = saveIdPhoto(idPhotoFront, user.getUsername(), "front");
+        user.setIdPhotoFrontUrl(frontPhotoPath);
+        userRepository.save(user);
+        LOGGER.info("💾 Saved front ID photo: {}", frontPhotoPath);
+
+        // Check image quality
+        if (!isImageQualityAcceptable(idPhotoFront)) {
+            throw new Exception("❌ ID photo is too blurry.");
+        }
+
+        // Extract OCR text
+        String extractedText = extractTextFromImage(idPhotoFront);
+        LOGGER.info("📄 OCR extracted: {}", extractedText);
+
+        // Parse birthdate
+        Date birthdate = parseBirthdate(extractedText);
+        if (birthdate == null) {
+            throw new Exception("❌ Birthdate extraction failed. Please upload clearer ID.");
+        }
+
+        // Calculate age
+        int age = calculateAge(birthdate);
+        LOGGER.info("📅 User calculated age: {}", age);
+
+        // Set user info
+        user.setExtractedBirthdate(birthdate);
+        user.setExtractedAge(age);
+        user.setVerifiedAt(new Date());
+
+        // Enforce age requirement
+        if (age < MINIMUM_AGE) {
+            user.setIdVerificationStatus("REJECTED");
+            user.setIdVerified(false);
+            user.setVerificationFailureReason(
+                    String.format("Age requirement not met. Minimum: %d, Your age: %d", MINIMUM_AGE, age)
+            );
+            userRepository.save(user);
+            throw new Exception(String.format("❌ Age requirement not met. You must be at least %d years old.", MINIMUM_AGE));
+        }
+
+        user.setIdVerificationStatus("APPROVED");
+        user.setIdVerified(true);
+        user.setVerificationFailureReason(null);
+        userRepository.save(user);
+
+        return String.format("✅ Age verification passed. Age: %d", age);
     }
 
     @Override
-    public String extractTextFromImage(MultipartFile idPhoto) throws Exception {
+    public String extractTextFromImage(org.springframework.web.multipart.MultipartFile idPhoto) throws Exception {
         BufferedImage image = ImageIO.read(idPhoto.getInputStream());
         if (image == null) throw new Exception("Invalid image file");
         try {
@@ -148,34 +134,26 @@ public class IdVerificationServiceImpl implements IdVerificationService {
     public Date parseBirthdate(String text) {
         if (text == null) return null;
 
-        // Clean text for better OCR error handling
         text = cleanOcrText(text);
 
-        // Try multiple date patterns (Philippine ID formats)
-        Date result = null;
-
-        // Pattern 1: YYYY/MM/DD or YYYY-MM-DD (ISO format)
+        Date result;
         result = tryParsePattern(text, "\\b(19|20)\\d{2}[/-](0?[1-9]|1[0-2])[/-](0?[1-9]|[12][0-9]|3[01])\\b",
                 new String[]{"yyyy/MM/dd", "yyyy-MM-dd"});
         if (result != null) return result;
 
-        // Pattern 2: DD/MM/YYYY or DD-MM-YYYY (Common Philippine format)
         result = tryParsePattern(text, "\\b(0?[1-9]|[12][0-9]|3[01])[/-](0?[1-9]|1[0-2])[/-](19|20)\\d{2}\\b",
                 new String[]{"dd/MM/yyyy", "dd-MM-yyyy"});
         if (result != null) return result;
 
-        // Pattern 3: MM/DD/YYYY or MM-DD-YYYY (US format, common in some Philippine IDs)
         result = tryParsePattern(text, "\\b(0?[1-9]|1[0-2])[/-](0?[1-9]|[12][0-9]|3[01])[/-](19|20)\\d{2}\\b",
                 new String[]{"MM/dd/yyyy", "MM-dd-yyyy"});
         if (result != null) return result;
 
-        // Pattern 4: Month DD, YYYY (e.g., "January 15, 1960")
         result = tryParsePattern(text, "\\b(January|February|March|April|May|June|July|August|September|October|November|December|" +
                         "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\\s+(0?[1-9]|[12][0-9]|3[01]),?\\s+(19|20)\\d{2}\\b",
                 new String[]{"MMMM dd, yyyy", "MMMM dd yyyy", "MMM dd, yyyy", "MMM dd yyyy"});
         if (result != null) return result;
 
-        // Pattern 5: DD Month YYYY (e.g., "15 January 1960")
         result = tryParsePattern(text, "\\b(0?[1-9]|[12][0-9]|3[01])\\s+(January|February|March|April|May|June|July|August|September|October|November|December|" +
                         "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\\s+(19|20)\\d{2}\\b",
                 new String[]{"dd MMMM yyyy", "dd MMM yyyy"});
@@ -185,22 +163,15 @@ public class IdVerificationServiceImpl implements IdVerificationService {
         return null;
     }
 
-    /**
-     * Cleans OCR text to handle common OCR errors
-     */
     private String cleanOcrText(String text) {
-        // Replace common OCR misreads
-        text = text.replaceAll("O", "0"); // O -> 0
-        text = text.replaceAll("l", "1"); // lowercase L -> 1
-        text = text.replaceAll("I", "1"); // uppercase I -> 1
-        text = text.replaceAll("S", "5"); // S -> 5 (in dates)
-        text = text.replaceAll("B", "8"); // B -> 8
+        text = text.replaceAll("O", "0");
+        text = text.replaceAll("l", "1");
+        text = text.replaceAll("I", "1");
+        text = text.replaceAll("S", "5");
+        text = text.replaceAll("B", "8");
         return text;
     }
 
-    /**
-     * Tries to parse a date using a regex pattern and multiple format strings
-     */
     private Date tryParsePattern(String text, String regexPattern, String[] formats) {
         Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
@@ -212,17 +183,13 @@ public class IdVerificationServiceImpl implements IdVerificationService {
                     SimpleDateFormat sdf = new SimpleDateFormat(format);
                     sdf.setLenient(false);
                     Date date = sdf.parse(dateStr);
-
-                    // Validate year range (must be between 1900 and current year)
                     int year = Integer.parseInt(new SimpleDateFormat("yyyy").format(date));
                     int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
                     if (year >= 1900 && year <= currentYear) {
                         LOGGER.info("✅ Parsed birthdate: {} using format: {}", dateStr, format);
                         return date;
                     }
-                } catch (ParseException | NumberFormatException e) {
-                    // Try next format
-                }
+                } catch (ParseException | NumberFormatException ignored) {}
             }
         }
         return null;
@@ -235,7 +202,7 @@ public class IdVerificationServiceImpl implements IdVerificationService {
     }
 
     @Override
-    public boolean isImageQualityAcceptable(MultipartFile idPhoto) throws Exception {
+    public boolean isImageQualityAcceptable(org.springframework.web.multipart.MultipartFile idPhoto) throws Exception {
         BufferedImage image = ImageIO.read(idPhoto.getInputStream());
         if (image == null) throw new Exception("Invalid image file");
         return calculateLaplacianVariance(image) >= BLUR_THRESHOLD;
@@ -265,90 +232,44 @@ public class IdVerificationServiceImpl implements IdVerificationService {
         return (sumSq / count) - (mean * mean);
     }
 
-    /**
-     * Validates ID photo file type, size, and basic properties.
-     * Prevents malicious file uploads and ensures proper image format.
-     */
-    private void validateIdPhoto(MultipartFile file, String photoType) throws Exception {
-        if (file == null || file.isEmpty()) {
-            throw new Exception(photoType + " photo is required");
-        }
+    private void validateIdPhoto(org.springframework.web.multipart.MultipartFile file, String photoType) throws Exception {
+        if (file == null || file.isEmpty()) throw new Exception(photoType + " photo is required");
+        long maxSize = 10 * 1024 * 1024;
+        if (file.getSize() > maxSize) throw new Exception(photoType + " photo exceeds 10MB");
 
-        // Validate file size (max 10MB)
-        long maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.getSize() > maxSize) {
-            throw new Exception(photoType + " photo size exceeds 10MB limit");
-        }
-
-        // Validate content type (MIME type)
         String contentType = file.getContentType();
         if (contentType == null || !(contentType.equals("image/jpeg") ||
-                                     contentType.equals("image/jpg") ||
-                                     contentType.equals("image/png"))) {
-            throw new Exception(photoType + " photo must be JPEG or PNG format");
+                contentType.equals("image/jpg") ||
+                contentType.equals("image/png"))) {
+            throw new Exception(photoType + " photo must be JPEG or PNG");
         }
 
-        // Validate filename extension
-        String filename = file.getOriginalFilename();
-        if (filename != null) {
-            String ext = filename.toLowerCase();
-            if (!ext.endsWith(".jpg") && !ext.endsWith(".jpeg") && !ext.endsWith(".png")) {
-                throw new Exception(photoType + " photo must have .jpg, .jpeg, or .png extension");
-            }
-        }
-
-        // Validate image can be read (prevents malformed images)
-        try {
-            BufferedImage image = ImageIO.read(file.getInputStream());
-            if (image == null) {
-                throw new Exception(photoType + " photo is not a valid image file");
-            }
-            // ✅ Don't reset stream - MultipartFile provides fresh streams on each getInputStream() call
-        } catch (IOException e) {
-            LOGGER.error("❌ Image validation error for {}: {}", photoType, e.getMessage());
-            throw new Exception(photoType + " photo is corrupted or not a valid image");
-        }
+        BufferedImage image = ImageIO.read(file.getInputStream());
+        if (image == null) throw new Exception(photoType + " photo is invalid or corrupted");
 
         LOGGER.info("✅ {} photo validation passed", photoType);
     }
 
-    private String saveIdPhoto(MultipartFile file, String username, String type) throws IOException {
+    private String saveIdPhoto(org.springframework.web.multipart.MultipartFile file, String username, String type) throws IOException {
         if (file == null || file.isEmpty()) return null;
-
         Path dir = Paths.get(uploadPath);
         if (!Files.exists(dir)) Files.createDirectories(dir);
 
-        // Sanitize filename and validate extension to prevent path traversal
+        String ext = ".jpg";
         String originalFilename = file.getOriginalFilename();
-        String ext = ".jpg"; // Default extension
-
         if (originalFilename != null && originalFilename.contains(".")) {
-            // Extract extension and sanitize (remove any path separators)
             String rawExt = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
-            // Remove any path traversal characters
             rawExt = rawExt.replaceAll("[^a-z0-9.]", "");
-
-            // Whitelist allowed extensions
-            if (rawExt.equals(".jpg") || rawExt.equals(".jpeg") || rawExt.equals(".png")) {
-                ext = rawExt;
-            } else {
-                LOGGER.warn("Invalid file extension {} for user {}, using .jpg", rawExt, username);
-            }
+            if (rawExt.equals(".jpg") || rawExt.equals(".jpeg") || rawExt.equals(".png")) ext = rawExt;
         }
 
-        // Sanitize username to prevent path traversal
         String safeUsername = username.replaceAll("[^a-zA-Z0-9_-]", "_");
-
         String filename = String.format("%s_%s_%s_%s%s",
                 safeUsername, type, new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()),
                 UUID.randomUUID().toString().substring(0, 8), ext);
 
         Path path = dir.resolve(filename);
-
-        // Verify path is still within upload directory (defense in depth)
-        if (!path.normalize().startsWith(dir.normalize())) {
-            throw new IOException("Invalid file path detected");
-        }
+        if (!path.normalize().startsWith(dir.normalize())) throw new IOException("Invalid file path");
 
         Files.copy(file.getInputStream(), path);
         return path.toString();

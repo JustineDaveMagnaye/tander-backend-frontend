@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import React from "react";
 import {
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import colors from "../../config/colors";
 import IDCardCameraOverlay from "../camera/IDCardCameraOverlay";
@@ -204,6 +204,19 @@ export default function PhotoUploadSection({
       <View style={[styles.grid, { gap: 12 }]}>{renderSlots()}</View>
 
       <Text style={styles.helperText}>{helperText}</Text>
+
+      {/* Senior-Friendly Tips */}
+      {uploadedCount === 0 && (
+        <View style={styles.tipsContainer}>
+          <Text style={styles.tipsTitle}>📸 Tips for Clear Photos:</Text>
+          <View style={styles.tipsList}>
+            <Text style={styles.tipItem}>✓ Use good lighting (natural light is best)</Text>
+            <Text style={styles.tipItem}>✓ Place ID flat on a dark surface</Text>
+            <Text style={styles.tipItem}>✓ Make sure birthdate is clearly visible</Text>
+            <Text style={styles.tipItem}>✓ Hold phone steady or use a table</Text>
+          </View>
+        </View>
+      )}
 
       {uploadedCount > 0 && (
         <Text style={styles.removeHintText}>

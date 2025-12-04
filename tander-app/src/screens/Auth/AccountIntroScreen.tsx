@@ -20,9 +20,9 @@ import AppTextInput from "@/src/components/common/AppTextInput";
 import AppText from "@/src/components/inputs/AppText";
 import FullScreen from "@/src/components/layout/FullScreen";
 import colors from "@/src/config/colors";
-import NavigationService from "@/src/navigation/NavigationService";
-import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/context/ToastContext";
+import { useAuth } from "@/src/hooks/useAuth";
+import NavigationService from "@/src/navigation/NavigationService";
 import { Formik } from "formik";
 import * as Yup from "yup";
 
@@ -190,10 +190,6 @@ export default function AccountIntroScreen() {
                   type: 'success',
                   message: "Account created! Please complete your profile to continue.",
                   duration: 5000,
-                  action: {
-                    label: 'Continue',
-                    onPress: () => NavigationService.navigate("Auth", { screen: "Register" }),
-                  },
                 });
 
                 // Auto-navigate after 2 seconds

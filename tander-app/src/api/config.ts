@@ -11,12 +11,12 @@ const getApiBaseUrl = () => {
   if (__DEV__) {
     if (Platform.OS === 'android') {
       // Update this with your current tunnel URL (NO trailing slash)
-      return 'https://prerequisite-florida-without-fin.trycloudflare.com'; // ✅ NO trailing slash
+      return 'https://creatures-newton-ferry-receiver.trycloudflare.com'; // ✅ NO trailing slash
     }
-    return 'https://prerequisite-florida-without-fin.trycloudflare.com'; // ✅ NO trailing slash
+    return 'https://creatures-newton-ferry-receiver.trycloudflare.com'; // ✅ NO trailing slash
   }
   // Production URL - update this for production deployment (NO trailing slash)
-  return 'https://prerequisite-florida-without-fin.trycloudflare.com';
+  return 'https://creatures-newton-ferry-receiver.trycloudflare.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
