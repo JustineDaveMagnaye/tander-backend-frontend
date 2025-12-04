@@ -182,6 +182,10 @@ export default function Step2IdVerification({ navigation }: Props) {
 
       // Show error with Alert for important errors like age verification
       if (error.message && error.message.includes("Age requirement not met")) {
+        // Show toast error with backend error format
+        toast.error("❌ Age requirement not met. You must be at least 60 years old.");
+
+        // Also show Alert dialog for prominence
         Alert.alert(
           "Age Verification Failed",
           "Based on the information from your ID, you do not meet the minimum age requirement of 60 years. This app is exclusively for senior citizens.",
