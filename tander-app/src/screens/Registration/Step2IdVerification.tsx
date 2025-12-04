@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFormikContext } from "formik";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -40,11 +40,21 @@ export default function Step2IdVerification({ navigation }: Props) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [shouldGenerateToken, setShouldGenerateToken] = useState(false);
+  const [recaptchaTimeout, setRecaptchaTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Animations
   const headerAnim = useSlideUp(400, 0, 20);
   const cardAnim = useSlideUp(500, 100, 30);
   const bottomNavAnim = useSlideUp(600, 200, 40);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (recaptchaTimeout) {
+        clearTimeout(recaptchaTimeout);
+      }
+    };
+  }, [recaptchaTimeout]);
 
   // Handle photo updates
   const handleIdPhotosChange = (newIdPhotos: string[]) => {
@@ -59,6 +69,13 @@ export default function Step2IdVerification({ navigation }: Props) {
   // Handle reCAPTCHA token generation
   const handleRecaptchaToken = (token: string) => {
     console.log("✅ [Step2IdVerification] reCAPTCHA token received");
+
+    // Clear timeout since we got the token
+    if (recaptchaTimeout) {
+      clearTimeout(recaptchaTimeout);
+      setRecaptchaTimeout(null);
+    }
+
     setRecaptchaToken(token);
     setShouldGenerateToken(false);
     // Proceed with verification after token is received
@@ -68,9 +85,39 @@ export default function Step2IdVerification({ navigation }: Props) {
   // Handle reCAPTCHA error
   const handleRecaptchaError = (error: string) => {
     console.error("❌ [Step2IdVerification] reCAPTCHA error:", error);
+
+    // Clear timeout
+    if (recaptchaTimeout) {
+      clearTimeout(recaptchaTimeout);
+      setRecaptchaTimeout(null);
+    }
+
     setIsVerifying(false);
     setShouldGenerateToken(false);
-    toast.error("Security verification failed. Please try again.");
+    toast.error(`Security verification failed: ${error}. Please try again.`);
+  };
+
+  // Handle reCAPTCHA timeout
+  const handleRecaptchaTimeout = () => {
+    console.warn("⚠️ [Step2IdVerification] reCAPTCHA token generation timed out");
+    setShouldGenerateToken(false);
+    setIsVerifying(false);
+    setRecaptchaTimeout(null);
+
+    Alert.alert(
+      "Verification Timeout",
+      "Security verification took too long. This may be due to a slow internet connection. Please try again.",
+      [
+        {
+          text: "Retry",
+          onPress: () => validateAndProceed(),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
   };
 
   // Actual verification logic (called after reCAPTCHA token is obtained)
@@ -114,7 +161,39 @@ export default function Step2IdVerification({ navigation }: Props) {
 
     } catch (error: any) {
       console.error("🔴 [Step2IdVerification] Verification error:", error);
-      toast.error(error.message || "ID verification failed. Please try again.");
+
+      // Extract meaningful error message
+      let errorMessage = "ID verification failed. Please try again.";
+
+      if (error.message) {
+        errorMessage = error.message;
+
+        // Check for specific error types and provide helpful messages
+        if (error.message.includes("Age requirement not met")) {
+          errorMessage = "Age Verification Failed: You must be at least 60 years old to register for this senior dating app.";
+        } else if (error.message.includes("birthdate")) {
+          errorMessage = "Failed to read birthdate from ID. Please ensure your ID photo is clear and well-lit.";
+        } else if (error.message.includes("Bot detection")) {
+          errorMessage = "Security verification failed. Please try again.";
+        } else if (error.message.includes("Rate limit")) {
+          errorMessage = "Too many verification attempts. Please wait a moment and try again.";
+        }
+      }
+
+      // Show error with Alert for important errors like age verification
+      if (error.message && error.message.includes("Age requirement not met")) {
+        // Show toast error with backend error format
+        toast.error("❌ Age requirement not met. You must be at least 60 years old.");
+
+        // Also show Alert dialog for prominence
+        Alert.alert(
+          "Age Verification Failed",
+          "Based on the information from your ID, you do not meet the minimum age requirement of 60 years. This app is exclusively for senior citizens.",
+          [{ text: "OK" }]
+        );
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -149,6 +228,12 @@ export default function Step2IdVerification({ navigation }: Props) {
       });
 
       console.log("🟡 [Step2IdVerification] Starting reCAPTCHA token generation...");
+
+      // Set timeout for reCAPTCHA token generation (10 seconds)
+      const timeout = setTimeout(() => {
+        handleRecaptchaTimeout();
+      }, 10000);
+      setRecaptchaTimeout(timeout);
 
       // Trigger reCAPTCHA token generation
       setShouldGenerateToken(true);

@@ -75,7 +75,9 @@ export const RecaptchaWebView: React.FC<RecaptchaWebViewProps> = ({
 
   useEffect(() => {
     console.log(`🔵 [RecaptchaWebView] Initializing for action: ${action}`);
-  }, [action]);
+    console.log(`🔵 [RecaptchaWebView] Using site key: ${siteKey}`);
+    console.log('📝 [RecaptchaWebView] IMPORTANT: Make sure to restart the React Native app if this is the first time adding reCAPTCHA!');
+  }, [action, siteKey]);
 
   return (
     <View style={styles.container}>
@@ -87,11 +89,27 @@ export const RecaptchaWebView: React.FC<RecaptchaWebViewProps> = ({
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={false}
+        onLoad={() => {
+          console.log('✅ [RecaptchaWebView] WebView loaded successfully');
+        }}
+        onLoadStart={() => {
+          console.log('🔄 [RecaptchaWebView] WebView loading started...');
+        }}
+        onLoadEnd={() => {
+          console.log('🏁 [RecaptchaWebView] WebView loading finished');
+        }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.error('❌ [RecaptchaWebView] WebView error:', nativeEvent);
           if (onError) {
-            onError('WebView failed to load');
+            onError('WebView failed to load reCAPTCHA script');
+          }
+        }}
+        onHttpError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('❌ [RecaptchaWebView] HTTP error:', nativeEvent.statusCode, nativeEvent.url);
+          if (onError) {
+            onError(`Failed to load reCAPTCHA (HTTP ${nativeEvent.statusCode})`);
           }
         }}
       />
