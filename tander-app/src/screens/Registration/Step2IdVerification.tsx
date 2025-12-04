@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import PhotoUploadSection from "../../components/registration/PhotoUploadSection";
 import ProgressBar from "../../components/ui/ProgressBar";
+import RecaptchaWebView from "../../components/recaptcha/RecaptchaWebView";
 import colors from "../../config/colors";
 import { useSlideUp } from "../../hooks/useFadeIn";
 import { Step2Nav } from "../../navigation/NavigationTypes";
@@ -37,6 +38,8 @@ export default function Step2IdVerification({ navigation }: Props) {
     values.idPhotos || [""]
   );
   const [isVerifying, setIsVerifying] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [shouldGenerateToken, setShouldGenerateToken] = useState(false);
 
   // Animations
   const headerAnim = useSlideUp(400, 0, 20);
@@ -52,6 +55,70 @@ export default function Step2IdVerification({ navigation }: Props) {
   // Check if can proceed (only front photo required)
   const uploadedIdPhotos = idPhotos.filter((id) => id !== "").length;
   const canProceed = uploadedIdPhotos >= 1;
+
+  // Handle reCAPTCHA token generation
+  const handleRecaptchaToken = (token: string) => {
+    console.log("✅ [Step2IdVerification] reCAPTCHA token received");
+    setRecaptchaToken(token);
+    setShouldGenerateToken(false);
+    // Proceed with verification after token is received
+    proceedWithVerification(token);
+  };
+
+  // Handle reCAPTCHA error
+  const handleRecaptchaError = (error: string) => {
+    console.error("❌ [Step2IdVerification] reCAPTCHA error:", error);
+    setIsVerifying(false);
+    setShouldGenerateToken(false);
+    toast.error("Security verification failed. Please try again.");
+  };
+
+  // Actual verification logic (called after reCAPTCHA token is obtained)
+  const proceedWithVerification = async (token: string) => {
+    // Check if Phase 1 data exists
+    if (!phase1Data) {
+      toast.error("Phase 1 data not found. Please start registration from the beginning.");
+      setIsVerifying(false);
+      return;
+    }
+
+    try {
+      console.log("🟡 [Step2IdVerification] Proceeding with verification...");
+      console.log("🟡 [Step2IdVerification] ID Photo:", idPhotos[0]);
+
+      // Get photo URI (front only)
+      const idPhotoFrontUri = idPhotos[0];
+
+      if (!idPhotoFrontUri) {
+        throw new Error("Front ID photo is required");
+      }
+
+      console.log("🟡 [Step2IdVerification] Front URI:", idPhotoFrontUri);
+      console.log("🟡 [Step2IdVerification] reCAPTCHA token:", token ? 'present' : 'missing');
+
+      // Call verifyId API with front photo URI and reCAPTCHA token
+      await verifyId(phase1Data.username, idPhotoFrontUri, token);
+
+      console.log("✅ [Step2IdVerification] ID verified successfully!");
+
+      // Save to Formik
+      setFieldValue("idPhotos", idPhotos);
+
+      // Show success toast
+      toast.success("ID verified successfully!");
+
+      // Navigate to Step 3 (Photos)
+      setTimeout(() => {
+        navigation.navigate("Step3");
+      }, 500);
+
+    } catch (error: any) {
+      console.error("🔴 [Step2IdVerification] Verification error:", error);
+      toast.error(error.message || "ID verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   // Validate and proceed to next step
   const validateAndProceed = async () => {
@@ -81,38 +148,14 @@ export default function Step2IdVerification({ navigation }: Props) {
         duration: 2000,
       });
 
-      console.log("🟡 [Step2IdVerification] Calling verifyId...");
-      console.log("🟡 [Step2IdVerification] ID Photo:", idPhotos[0]);
+      console.log("🟡 [Step2IdVerification] Starting reCAPTCHA token generation...");
 
-      // Get photo URI (front only)
-      const idPhotoFrontUri = idPhotos[0];
-
-      if (!idPhotoFrontUri) {
-        throw new Error("Front ID photo is required");
-      }
-
-      console.log("🟡 [Step2IdVerification] Front URI:", idPhotoFrontUri);
-
-      // Call verifyId API with front photo URI only
-      await verifyId(phase1Data.username, idPhotoFrontUri);
-
-      console.log("✅ [Step2IdVerification] ID verified successfully!");
-
-      // Save to Formik
-      setFieldValue("idPhotos", idPhotos);
-
-      // Show success toast
-      toast.success("ID verified successfully!");
-
-      // Navigate to Step 3 (Photos)
-      setTimeout(() => {
-        navigation.navigate("Step3");
-      }, 500);
+      // Trigger reCAPTCHA token generation
+      setShouldGenerateToken(true);
 
     } catch (error: any) {
       console.error("🔴 [Step2IdVerification] Verification error:", error);
       toast.error(error.message || "ID verification failed. Please try again.");
-    } finally {
       setIsVerifying(false);
     }
   };
@@ -221,6 +264,15 @@ export default function Step2IdVerification({ navigation }: Props) {
           )}
         </TouchableOpacity>
       </Animated.View>
+
+      {/* Invisible reCAPTCHA WebView */}
+      {shouldGenerateToken && (
+        <RecaptchaWebView
+          action="verify_id"
+          onToken={handleRecaptchaToken}
+          onError={handleRecaptchaError}
+        />
+      )}
     </View>
   );
 }
