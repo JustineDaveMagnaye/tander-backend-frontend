@@ -58,13 +58,13 @@ export default Yup.object().shape({
   birthday: Yup.string()
     .required("Birthday is required")
     .test("valid-date", "Please enter a valid date (MM/DD/YYYY)", isValidDate)
-    .test("minimum-age", "You must be at least 18 years old", (value) =>
-      value ? isMinimumAge(value, 18) : false
+    .test("minimum-age", "You must be at least 60 years old", (value) =>
+      value ? isMinimumAge(value, 60) : false
     ),
 
   age: Yup.number()
     .required("Age is required")
-    .min(18, "You must be at least 18 years old")
+    .min(60, "You must be at least 60 years old")
     .max(100, "Please enter a valid age"),
 
   country: Yup.string().required("Country is required"),

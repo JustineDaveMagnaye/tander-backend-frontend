@@ -30,8 +30,24 @@ export default function DatePickerInput({
   placeholder = "mm/dd/yyyy",
 }: DatePickerInputProps) {
   const [showPicker, setShowPicker] = useState(false);
+
+  // Calculate minimum date for 60+ age requirement
+  const getMinimumDate = () => {
+    const today = new Date();
+    const minDate = new Date();
+    minDate.setFullYear(today.getFullYear() - 100); // Max 100 years old
+    return minDate;
+  };
+
+  const getMaximumDate = () => {
+    const today = new Date();
+    const maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() - 60); // Minimum 60 years old
+    return maxDate;
+  };
+
   const [tempDate, setTempDate] = useState<Date>(
-    value ? new Date(value) : new Date()
+    value ? new Date(value) : getMaximumDate()
   );
 
   // Fade animation for error message
@@ -137,7 +153,8 @@ export default function DatePickerInput({
                 mode="date"
                 display="spinner"
                 onChange={handleDateChange}
-                maximumDate={new Date()}
+                minimumDate={getMinimumDate()}
+                maximumDate={getMaximumDate()}
                 textColor="#000"
               />
             </View>
@@ -152,7 +169,8 @@ export default function DatePickerInput({
           mode="date"
           display="default"
           onChange={handleDateChange}
-          maximumDate={new Date()}
+          minimumDate={getMinimumDate()}
+          maximumDate={getMaximumDate()}
         />
       )}
     </View>
