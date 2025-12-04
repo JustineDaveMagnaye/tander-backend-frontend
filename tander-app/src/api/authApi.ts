@@ -165,7 +165,11 @@ export const authApi = {
       return response.data;
     } catch (error: any) {
       console.error('🔴 [authApi.verifyId] Error:', error.response?.data);
-      throw new Error(error.response?.data?.message || error.message || 'ID verification failed');
+      // Backend returns error message as plain string in response.data, not as {message: "..."}
+      const errorMessage = typeof error.response?.data === 'string'
+        ? error.response.data
+        : error.response?.data?.message || error.message || 'ID verification failed';
+      throw new Error(errorMessage);
     }
   },
 
