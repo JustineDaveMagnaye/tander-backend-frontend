@@ -303,9 +303,9 @@ public class IdVerificationServiceImpl implements IdVerificationService {
             if (image == null) {
                 throw new Exception(photoType + " photo is not a valid image file");
             }
-            // Reset input stream for later use
-            file.getInputStream().reset();
+            // ✅ Don't reset stream - MultipartFile provides fresh streams on each getInputStream() call
         } catch (IOException e) {
+            LOGGER.error("❌ Image validation error for {}: {}", photoType, e.getMessage());
             throw new Exception(photoType + " photo is corrupted or not a valid image");
         }
 
