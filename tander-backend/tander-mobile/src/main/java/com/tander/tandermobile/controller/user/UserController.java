@@ -138,13 +138,17 @@ public class UserController {
             // 1. Rate limiting check (10 req/min per IP)
             String ipAddress = getClientIpAddress(request);
             if (!rateLimitService.allowRequest(ipAddress, "/user/verify-id")) {
-                return new ResponseEntity<>("Rate limit exceeded. Please try again later.", null, HttpStatus.TOO_MANY_REQUESTS);
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("Content-Type", "text/plain;charset=UTF-8");
+                return new ResponseEntity<>("Rate limit exceeded. Please try again later.", headers, HttpStatus.TOO_MANY_REQUESTS);
             }
 
             // 2. reCAPTCHA verification (invisible, senior-friendly)
             if (recaptchaService.isEnabled()) {
                 if (!recaptchaService.verifyToken(recaptchaToken, "verify_id")) {
-                    return new ResponseEntity<>("Bot detection failed. Please try again.", null, HttpStatus.FORBIDDEN);
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.add("Content-Type", "text/plain;charset=UTF-8");
+                    return new ResponseEntity<>("Bot detection failed. Please try again.", headers, HttpStatus.FORBIDDEN);
                 }
             }
 
@@ -152,7 +156,13 @@ public class UserController {
             String result = userService.verifyId(username, idPhotoFront, idPhotoBack, verificationToken);
             return new ResponseEntity<>(result, null, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), null, HttpStatus.BAD_REQUEST);
+            // Log the error for debugging
+            System.err.println("❌ [UserController.verifyId] Error: " + e.getMessage());
+
+            // Return error message with proper headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Type", "text/plain;charset=UTF-8");
+            return new ResponseEntity<>(e.getMessage(), headers, HttpStatus.BAD_REQUEST);
         }
     }
 
