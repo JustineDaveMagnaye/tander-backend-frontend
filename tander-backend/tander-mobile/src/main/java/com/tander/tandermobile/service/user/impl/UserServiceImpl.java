@@ -8,6 +8,7 @@ import com.tander.tandermobile.domain.user.User;
 import com.tander.tandermobile.domain.user.principal.UserPrincipal;
 import com.tander.tandermobile.exception.domain.*;
 import com.tander.tandermobile.repository.user.UserRepository;
+import com.tander.tandermobile.repository.profile.ProfileRepository;
 import com.tander.tandermobile.service.audit.AuditLogService;
 import com.tander.tandermobile.service.email.EmailService;
 import com.tander.tandermobile.service.login.attempt.LoginAttemptService;
@@ -43,6 +44,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
     private UserRepository userRepository;
+    private ProfileRepository profileRepository;
     private BCryptPasswordEncoder passwordEncoder;
     private LoginAttemptService loginAttemptService;
     private EmailService emailService;
@@ -53,6 +55,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
      * Constructor for injecting UserService and EmailService.
      *
      * @param userRepository  the service used for user management
+     * @param profileRepository the repository used for profile management
      * @param passwordEncoder the service used for encrypting passwords
      * @param loginAttemptService the service used for managing login
      * @param emailService the service used for sending emails
@@ -61,12 +64,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
      */
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
+                           ProfileRepository profileRepository,
                            BCryptPasswordEncoder passwordEncoder,
                            LoginAttemptService loginAttemptService,
                            EmailService emailService,
                            AuditLogService auditLogService,
                            IdVerificationService idVerificationService) {
         this.userRepository = userRepository;
+        this.profileRepository = profileRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptService = loginAttemptService;
         this.emailService = emailService;
