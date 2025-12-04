@@ -28,6 +28,16 @@ public class AuditLogServiceImpl implements AuditLogService {
         this.auditLogRepository = auditLogRepository;
     }
 
+    /**
+     * Truncates a string to the specified max length to prevent database constraint violations.
+     * Returns null if input is null.
+     */
+    private String truncate(String value, int maxLength) {
+        if (value == null) return null;
+        if (value.length() <= maxLength) return value;
+        return value.substring(0, maxLength);
+    }
+
     @Override
     @Async
     public void logEvent(AuditEventType eventType, AuditStatus status, Long userId, String username, String description) {
@@ -48,19 +58,19 @@ public class AuditLogServiceImpl implements AuditLogService {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(userId)
-                    .username(username)
+                    .username(truncate(username, 255))
                     .eventType(eventType)
                     .status(status)
-                    .description(description)
-                    .ipAddress(ipAddress)
-                    .userAgent(userAgent)
-                    .errorMessage(errorMessage)
+                    .description(truncate(description, 1000))
+                    .ipAddress(truncate(ipAddress, 45))
+                    .userAgent(truncate(userAgent, 500))
+                    .errorMessage(truncate(errorMessage, 1000))
                     .build();
 
             auditLogRepository.save(auditLog);
 
             LOGGER.info("Audit log created: {} - {} - User: {} - Status: {}",
-                    eventType, description, username, status);
+                    eventType, truncate(description, 100), username, status);
         } catch (Exception e) {
             LOGGER.error("Failed to create audit log for event: {} - User: {} - Error: {}",
                     eventType, username, e.getMessage());
@@ -76,24 +86,24 @@ public class AuditLogServiceImpl implements AuditLogService {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(userId)
-                    .username(username)
+                    .username(truncate(username, 255))
                     .eventType(eventType)
                     .status(status)
-                    .entityType(entityType)
+                    .entityType(truncate(entityType, 100))
                     .entityId(entityId)
-                    .description(description)
-                    .ipAddress(ipAddress)
-                    .userAgent(userAgent)
-                    .oldValue(oldValue)
-                    .newValue(newValue)
-                    .errorMessage(errorMessage)
-                    .sessionId(sessionId)
+                    .description(truncate(description, 1000))
+                    .ipAddress(truncate(ipAddress, 45))
+                    .userAgent(truncate(userAgent, 500))
+                    .oldValue(oldValue) // CLOB - no length limit
+                    .newValue(newValue) // CLOB - no length limit
+                    .errorMessage(truncate(errorMessage, 1000))
+                    .sessionId(truncate(sessionId, 255))
                     .build();
 
             auditLogRepository.save(auditLog);
 
             LOGGER.info("Detailed audit log created: {} - {} - User: {} - Entity: {} - Status: {}",
-                    eventType, description, username, entityType, status);
+                    eventType, truncate(description, 100), username, entityType, status);
         } catch (Exception e) {
             LOGGER.error("Failed to create detailed audit log for event: {} - User: {} - Error: {}",
                     eventType, username, e.getMessage());
@@ -104,7 +114,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     public AuditLog createAuditLog(AuditEventType eventType, AuditStatus status, Long userId, String username) {
         AuditLog auditLog = AuditLog.builder()
                 .userId(userId)
-                .username(username)
+                .username(truncate(username, 255))
                 .eventType(eventType)
                 .status(status)
                 .build();
