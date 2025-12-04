@@ -78,11 +78,11 @@ export default function PhotoUploadSection({
         }
       }
 
-      // Launch image picker
+      // Launch image picker with free cropping
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
-        aspect: [4, 3],
+        // No aspect ratio constraint - allows free cropping
         quality: 1, // High quality for OCR
       });
 
