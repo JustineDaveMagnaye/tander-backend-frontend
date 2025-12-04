@@ -76,11 +76,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyId = async (username: string, idPhotoFrontUri: string) => {
+  const verifyId = async (username: string, idPhotoFrontUri: string, recaptchaToken?: string) => {
     try {
       console.log('🟡 [AuthProvider.verifyId] Verifying ID for:', username);
       console.log('🟡 [AuthProvider.verifyId] Front URI:', idPhotoFrontUri);
-      await authApi.verifyId(username, idPhotoFrontUri);
+      console.log('🟡 [AuthProvider.verifyId] reCAPTCHA token:', recaptchaToken ? 'present' : 'missing');
+      await authApi.verifyId(username, idPhotoFrontUri, recaptchaToken);
       console.log('✅ [AuthProvider.verifyId] Success');
     } catch (error) {
       console.error('🔴 [AuthProvider.verifyId] Error:', error);

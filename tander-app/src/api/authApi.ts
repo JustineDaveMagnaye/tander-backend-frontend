@@ -128,10 +128,11 @@ export const authApi = {
     }
   },
 
-  verifyId: async (username: string, idPhotoFrontUri: string): Promise<string> => {
+  verifyId: async (username: string, idPhotoFrontUri: string, recaptchaToken?: string): Promise<string> => {
     try {
       console.log(`🟡 [authApi.verifyId] Verifying ID for username: ${username}`);
       console.log(`🟡 [authApi.verifyId] Front photo URI: ${idPhotoFrontUri}`);
+      console.log(`🟡 [authApi.verifyId] reCAPTCHA token: ${recaptchaToken ? 'present' : 'missing'}`);
 
       // Create FormData for multipart upload
       const formData = new FormData();
@@ -143,6 +144,14 @@ export const authApi = {
         type: 'image/jpeg',
         name: 'id-front.jpg',
       } as any);
+
+      // Add reCAPTCHA token if provided
+      if (recaptchaToken) {
+        formData.append('recaptchaToken', recaptchaToken);
+        console.log('🟡 [authApi.verifyId] Including reCAPTCHA token in request');
+      } else {
+        console.warn('⚠️ [authApi.verifyId] No reCAPTCHA token provided');
+      }
 
       console.log('🟡 [authApi.verifyId] Sending multipart form data...');
 
